@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -57,6 +58,37 @@ public class RagServiceImpl implements RagService {
         
         long responseTime = System.currentTimeMillis() - startTime;
         log.info("RAG问答完成: 耗时={}ms, 检索到{}个片段", responseTime, relevantChunks.size());
+
+        return new RagResponse(answer, sources, responseTime);
+    }
+
+    @Override
+    public RagResponse answerStream(String question, List<Message> historyMessages, Long userId, Long conversationId,
+                                     Consumer<List<SourceDoc>> onRetrieved, Consumer<String> onContent) {
+        long startTime = System.currentTimeMillis();
+        
+        log.info("RAG流式问答开始: question={}, userId={}, historyCount={}", question, userId, historyMessages.size());
+
+        // 1. 检索相关知识片段
+        List<KnowledgeChunk> relevantChunks = retrieve(question, defaultTopK);
+        
+        // 2. 构建知识库上下文
+        String context = buildContext(relevantChunks);
+        
+        // 3. 回调：检索完成，发送来源信息
+        if (onRetrieved != null) {
+            List<SourceDoc> sourceDocs = buildSourceDocs(relevantChunks);
+            onRetrieved.accept(sourceDocs);
+        }
+        
+        // 4. 生成回答（流式）
+        String answer = llmService.ragAnswerStream(question, context, historyMessages, onContent);
+        
+        // 5. 构建来源信息
+        List<SourceInfo> sources = buildSources(relevantChunks);
+        
+        long responseTime = System.currentTimeMillis() - startTime;
+        log.info("RAG流式问答完成: 耗时={}ms, 检索到{}个片段", responseTime, relevantChunks.size());
 
         return new RagResponse(answer, sources, responseTime);
     }
@@ -172,6 +204,44 @@ public class RagServiceImpl implements RagService {
                         truncateContent(chunk.getContent(), 200),
                         0f // 分数可从搜索结果中获取
                 ))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 构建来源文档（简化版）
+     */
+    private List<SourceDoc> buildSourceDocs(List<KnowledgeChunk> chunks) {
+        if (chunks.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 获取相关文档信息
+        Set<Long> docIds = chunks.stream()
+                .map(KnowledgeChunk::getDocId)
+                .collect(Collectors.toSet());
+        
+        List<KnowledgeDoc> docs = docMapper.selectBatchIds(docIds);
+        Map<Long, String> docTitleMap = docs.stream()
+                .collect(Collectors.toMap(KnowledgeDoc::getId, KnowledgeDoc::getTitle));
+
+        // 按文档分组，合并同一文档的内容
+        Map<Long, List<KnowledgeChunk>> docChunksMap = chunks.stream()
+                .collect(Collectors.groupingBy(KnowledgeChunk::getDocId));
+
+        return docChunksMap.entrySet().stream()
+                .map(entry -> {
+                    Long docId = entry.getKey();
+                    List<KnowledgeChunk> docChunks = entry.getValue();
+                    String combinedContent = docChunks.stream()
+                            .map(KnowledgeChunk::getContent)
+                            .collect(Collectors.joining("\n\n"));
+                    return new SourceDoc(
+                            docId,
+                            docTitleMap.getOrDefault(docId, "未知文档"),
+                            truncateContent(combinedContent, 300),
+                            0f // 分数可从搜索结果中获取
+                    );
+                })
                 .collect(Collectors.toList());
     }
 
