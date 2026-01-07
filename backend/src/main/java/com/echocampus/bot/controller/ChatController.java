@@ -11,7 +11,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
@@ -33,6 +35,18 @@ public class ChatController {
             @Valid @RequestBody ChatRequest request) {
         ChatResponse response = chatService.sendMessage(userId, request);
         return Result.success(response);
+    }
+
+    @Operation(summary = "发送消息（流式）", description = "发送消息并以SSE流式方式获取AI回复")
+    @GetMapping(value = "/message/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter sendMessageStream(
+            @Parameter(description = "用户ID", required = true) @RequestHeader(value = "X-User-Id", defaultValue = "1") Long userId,
+            @Parameter(description = "问题内容") @RequestParam String message,
+            @Parameter(description = "会话ID") @RequestParam(required = false) Long conversationId) {
+        ChatRequest request = new ChatRequest();
+        request.setMessage(message);
+        request.setConversationId(conversationId);
+        return chatService.sendMessageStream(userId, request);
     }
 
     @Operation(summary = "获取会话列表", description = "获取用户的会话列表")
