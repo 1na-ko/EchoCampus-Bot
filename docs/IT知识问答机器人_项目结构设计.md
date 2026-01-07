@@ -54,10 +54,12 @@
   - 支持高效的相似度检索
 
 #### AI服务层 (AI Service Layer)
-- **文本嵌入**: 阿里云Embedding API
-  - 将文本转换为高维向量表示
-- **大语言模型**: DeepSeek V3 API
+- **文本嵌入**: 阿里云百炼平台 Qwen3-Embedding (text-embedding-v3)
+  - 将文本转换为1536维高维向量表示
+  - API地址: https://dashscope.aliyuncs.com/compatible-mode/v1
+- **大语言模型**: DeepSeek V3.2 API
   - 基于检索内容生成自然语言答案
+  - API地址: https://api.deepseek.com/v1/chat/completions
 
 ### 1.3 核心工作流程
 
@@ -69,13 +71,13 @@
     ↓
 [后端] 问题预处理(清洗、规范化)
     ↓
-[阿里云Embedding] 将问题转换为向量
+[阿里云Qwen3-Embedding] 将问题转换为1536维向量
     ↓
 [Milvus] 向量相似度检索,获取Top-K相关文档
     ↓
 [后端] 构建Prompt(系统提示 + 检索文档 + 用户问题)
     ↓
-[DeepSeek API] 生成答案
+[DeepSeek V3.2 API] 生成答案
     ↓
 [后端] 后处理(格式化、过滤)
     ↓
@@ -92,7 +94,7 @@
     ↓
 [LangChain4j] 智能文本切块(递归分割、语义保持)
     ↓
-[阿里云Embedding] 文本块向量化
+[阿里云Qwen3-Embedding] 文本块向量化(1536维)
     ↓
 [Milvus] 存储向量 + [PostgreSQL] 存储元数据
     ↓
@@ -205,7 +207,9 @@ INSERT INTO system_config (config_key, config_value, description) VALUES
 ('rag.temperature', '0.7', 'AI生成答案的温度参数'),
 ('rag.max_tokens', '1000', 'AI生成答案的最大token数'),
 ('milvus.collection_name', 'it_knowledge', 'Milvus向量集合名称'),
-('milvus.dimension', '1536', '向量维度(根据Embedding模型)');
+('milvus.dimension', '1536', '向量维度(根据Qwen3-Embedding模型)'),
+('embedding.model', 'text-embedding-v3', 'Embedding模型(阿里云百炼平台)'),
+('llm.model', 'deepseek-v3.2', 'LLM模型(DeepSeek V3.2)');
 ```
 
 ### 2.2 Milvus 向量数据库设计
@@ -225,7 +229,7 @@ INSERT INTO system_config (config_key, config_value, description) VALUES
         {
             "name": "vector",  # 文本向量
             "type": "float_vector",
-            "dimension": 1536  # 根据阿里云Embedding模型
+            "dimension": 1536  # 根据Qwen3-Embedding模型(text-embedding-v3)
         },
         {
             "name": "chunk_id",  # 关联的知识片段ID
@@ -683,7 +687,7 @@ it-qabot/
 #### 5.2.1 配置模块 (config)
 - **MyBatisConfig**: MyBatis-Plus配置,分页插件
 - **MilvusConfig**: Milvus客户端配置,连接向量数据库
-- **AiServiceConfig**: AI服务配置,阿里云和DeepSeek API密钥
+- **AiServiceConfig**: AI服务配置,阿里云百炼平台Qwen3-Embedding和DeepSeek V3.2 API密钥
 - **SwaggerConfig**: API文档配置
 
 #### 5.2.2 控制器模块 (controller)
@@ -889,8 +893,8 @@ it-qabot-frontend/
 │                                                             │
 │  ┌─────────────────┐    ┌─────────────────┐               │
 │  │   Milvus        │    │   外部API      │               │
-│  │   向量数据库    │    │   阿里云AI     │               │
-│  │   端口: 19530   │    │               │               │
+│  │   向量数据库    │    │   阿里云百炼    │               │
+│  │   端口: 19530   │    │   DeepSeek     │               │
 │  └─────────────────┘    └─────────────────┘               │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -1122,8 +1126,8 @@ docker-compose exec backend java -jar app.jar --init-milvus
 
 ### 8.2 第二阶段 (Week 2): 核心功能开发
 - [ ] 集成Milvus向量数据库,创建集合
-- [ ] 实现阿里云Embedding API调用
-- [ ] 实现DeepSeek API调用
+- [ ] 实现阿里云百炼平台Qwen3-Embedding API调用(text-embedding-v3)
+- [ ] 实现DeepSeek V3.2 API调用
 - [ ] 开发RAG问答核心逻辑
 - [ ] 实现对话历史管理
 - [ ] 开发聊天界面,支持消息展示和发送
@@ -1147,7 +1151,7 @@ docker-compose exec backend java -jar app.jar --init-milvus
    - 去除噪声(特殊字符、格式标记)
 
 2. **向量检索**:
-   - 选择合适的向量维度(阿里云: 1536维)
+   - 选择合适的向量维度(Qwen3-Embedding: 1536维)
    - 设置合理的Top-K值(通常3-5个)
    - 相似度阈值过滤(避免不相关内容)
 
