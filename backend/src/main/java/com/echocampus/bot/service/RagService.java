@@ -2,6 +2,7 @@ package com.echocampus.bot.service;
 
 import com.echocampus.bot.dto.response.ChatResponse;
 import com.echocampus.bot.entity.KnowledgeChunk;
+import com.echocampus.bot.entity.Message;
 
 import java.util.List;
 
@@ -11,14 +12,15 @@ import java.util.List;
 public interface RagService {
 
     /**
-     * RAG问答
+     * RAG问答（支持多轮对话）
      *
      * @param question 用户问题
+     * @param historyMessages 历史消息列表
      * @param userId 用户ID
      * @param conversationId 会话ID（可选，用于多轮对话）
      * @return 问答响应
      */
-    RagResponse answer(String question, Long userId, Long conversationId);
+    RagResponse answer(String question, List<Message> historyMessages, Long userId, Long conversationId);
 
     /**
      * 检索相关知识片段

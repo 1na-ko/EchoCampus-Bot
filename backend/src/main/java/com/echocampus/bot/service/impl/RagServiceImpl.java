@@ -2,6 +2,7 @@ package com.echocampus.bot.service.impl;
 
 import com.echocampus.bot.entity.KnowledgeChunk;
 import com.echocampus.bot.entity.KnowledgeDoc;
+import com.echocampus.bot.entity.Message;
 import com.echocampus.bot.mapper.KnowledgeChunkMapper;
 import com.echocampus.bot.mapper.KnowledgeDocMapper;
 import com.echocampus.bot.service.*;
@@ -37,19 +38,19 @@ public class RagServiceImpl implements RagService {
     private int maxContextLength;
 
     @Override
-    public RagResponse answer(String question, Long userId, Long conversationId) {
+    public RagResponse answer(String question, List<Message> historyMessages, Long userId, Long conversationId) {
         long startTime = System.currentTimeMillis();
         
-        log.info("RAG问答开始: question={}, userId={}", question, userId);
+        log.info("RAG问答开始: question={}, userId={}, historyCount={}", question, userId, historyMessages.size());
 
         // 1. 检索相关知识片段
         List<KnowledgeChunk> relevantChunks = retrieve(question, defaultTopK);
         
-        // 2. 构建上下文
+        // 2. 构建知识库上下文
         String context = buildContext(relevantChunks);
         
-        // 3. 生成回答
-        String answer = llmService.ragAnswer(question, context);
+        // 3. 生成回答（携带历史消息）
+        String answer = llmService.ragAnswer(question, context, historyMessages);
         
         // 4. 构建来源信息
         List<SourceInfo> sources = buildSources(relevantChunks);
