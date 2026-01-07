@@ -63,6 +63,16 @@ public class KnowledgeChunk {
     private Integer tokenCount;
 
     /**
+     * 在文档中的起始位置
+     */
+    private Integer startPosition;
+
+    /**
+     * 在文档中的结束位置
+     */
+    private Integer endPosition;
+
+    /**
      * 创建时间
      */
     @TableField(fill = FieldFill.INSERT)
