@@ -1,1 +1,82 @@
+# =========================
+# Maven
+# =========================
+target/
+*.jar
+*.war
+*.ear
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+
+# =========================
+# IDE - IntelliJ IDEA
+# =========================
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# =========================
+# IDE - Eclipse
+# =========================
+.settings/
+.project
+.classpath
+bin/
+
+# =========================
+# IDE - VS Code
+# =========================
+.vscode/
+
+# =========================
+# Logs
+# =========================
+*.log
+logs/
+
+# =========================
+# OS Files
+# =========================
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# =========================
+# Application
+# =========================
+# 上传文件目录
+uploads/
+
+# 本地配置（如有敏感信息）
+application-local.yml
+application-local.properties
+
+# =========================
+# Docker
+# =========================
+# Milvus数据卷（如果在本地）
+milvus_data/
+etcd_data/
+minio_data/
+
+# =========================
+# Node.js (前端)
+# =========================
+node_modules/
+dist/
+.npm/
+.env.local
+.env.*.local
+
+# =========================
+# Others
+# =========================
 resources/
+*.bak
+*.tmp
