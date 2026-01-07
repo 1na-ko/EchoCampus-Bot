@@ -1,9 +1,9 @@
 -- ============================================
--- IT知识问答机器人 - PostgreSQL数据库设计
+-- EchoCampus 校园问答机器人 - PostgreSQL数据库设计
 -- ============================================
 
 -- 创建数据库
-CREATE DATABASE it_qabot
+CREATE DATABASE echocampus_bot
     WITH 
     ENCODING = 'UTF8'
     LC_COLLATE = 'zh_CN.UTF-8'
@@ -11,7 +11,7 @@ CREATE DATABASE it_qabot
     CONNECTION LIMIT = -1;
 
 -- 使用数据库
-\c it_qabot;
+\c echocampus_bot;
 
 -- ============================================
 -- 1. 用户表 (users)
@@ -186,7 +186,7 @@ INSERT INTO system_config (config_key, config_value, config_type, description) V
 ('rag.temperature', '0.7', 'NUMBER', 'AI生成答案的温度参数(0.0-1.0)'),
 ('rag.max_tokens', '1000', 'NUMBER', 'AI生成答案的最大token数'),
 ('rag.similarity_threshold', '0.7', 'NUMBER', '相似度阈值,低于此值的结果将被过滤'),
-('milvus.collection_name', 'it_knowledge', 'STRING', 'Milvus向量集合名称'),
+('milvus.collection_name', 'echocampus_knowledge', 'STRING', 'Milvus向量集合名称'),
 ('milvus.dimension', '1536', 'NUMBER', '向量维度(根据Qwen3-Embedding模型)'),
 ('milvus.metric_type', 'COSINE', 'STRING', '相似度度量类型(L2, IP, COSINE)'),
 ('milvus.index_type', 'IVF_FLAT', 'STRING', '索引类型(IVF_FLAT, HNSW等)'),
@@ -206,8 +206,8 @@ INSERT INTO system_config (config_key, config_value, config_type, description) V
 ('chunking.overlap_size', '50', 'NUMBER', '文本切块重叠字符数'),
 ('chunking.min_chunk_size', '1', 'NUMBER', '文本切块最小字符数'),
 ('chunking.separators', '\n\n,\n,。,！,？,.,!,?, ,', 'STRING', '递归分割的分隔符(逗号分隔)'),
-('system.name', 'IT知识问答机器人', 'STRING', '系统名称'),
-('system.description', '基于RAG技术的智能IT知识问答系统', 'STRING', '系统描述');
+('system.name', 'EchoCampus-Bot', 'STRING', '系统名称'),
+('system.description', '基于RAG技术的智能校园问答系统', 'STRING', '系统描述');
 
 -- ============================================
 -- 8. 操作日志表 (operation_logs)
@@ -381,14 +381,14 @@ INSERT INTO messages (conversation_id, sender_type, content) VALUES
 
 -- 创建只读用户
 CREATE USER qabot_reader WITH PASSWORD 'readonly_password';
-GRANT CONNECT ON DATABASE it_qabot TO qabot_reader;
+GRANT CONNECT ON DATABASE echocampus_bot TO qabot_reader;
 GRANT USAGE ON SCHEMA public TO qabot_reader;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO qabot_reader;
 GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO qabot_reader;
 
 -- 创建读写用户
 CREATE USER qabot_writer WITH PASSWORD 'write_password';
-GRANT CONNECT ON DATABASE it_qabot TO qabot_writer;
+GRANT CONNECT ON DATABASE echocampus_bot TO qabot_writer;
 GRANT USAGE ON SCHEMA public TO qabot_writer;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO qabot_writer;
 GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO qabot_writer;
