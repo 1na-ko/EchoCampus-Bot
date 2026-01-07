@@ -64,13 +64,21 @@
           </div>
         </div>
         
-        <!-- 加载中 -->
-        <div v-if="loading" class="message-item bot">
+        <!-- 加载中或状态显示 -->
+        <div v-if="loading || currentStatus" class="message-item bot">
           <div class="message-avatar">
             <el-icon :size="24"><ChatDotRound /></el-icon>
           </div>
           <div class="message-content">
-            <div class="typing-indicator">
+            <div class="status-indicator" v-if="currentStatus">
+              <div class="status-badge" :class="currentStatus">
+                <el-icon class="spinning" v-if="currentStatus === 'thinking'"><Loading /></el-icon>
+                <el-icon class="spinning" v-else-if="currentStatus === 'retrieving'"><Search /></el-icon>
+                <el-icon class="spinning" v-else-if="currentStatus === 'generating'"><Edit /></el-icon>
+                <span>{{ statusMessage }}</span>
+              </div>
+            </div>
+            <div v-else class="typing-indicator">
               <span></span>
               <span></span>
               <span></span>
@@ -105,12 +113,14 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useChatStore } from '@/stores/chat'
-import { sendMessage, getMessages } from '@/api/chat'
+import { sendMessageStream, getMessages } from '@/api/chat'
 
 const chatStore = useChatStore()
 const inputMessage = ref('')
 const loading = ref(false)
 const messageListRef = ref(null)
+const currentStatus = ref('') // 当前状态：thinking/retrieving/generating
+const statusMessage = ref('') // 状态描述
 
 onMounted(async () => {
   await chatStore.loadConversations()
@@ -164,32 +174,84 @@ async function handleSend() {
   scrollToBottom()
   
   loading.value = true
+  currentStatus.value = ''
+  statusMessage.value = ''
+  
+  // 创建AI消息占位符
+  const aiMessageIndex = chatStore.messages.length
+  chatStore.addMessage({
+    type: 'bot',
+    content: '',
+    sources: [],
+    createdAt: new Date(),
+    streaming: true // 标记正在流式输出
+  })
   
   try {
-    const response = await sendMessage({
-      message,
-      conversationId: chatStore.currentConversationId
-    })
+    let fullContent = ''
+    let sources = []
     
-    // 添加AI回复
-    chatStore.addMessage({
-      type: 'bot',
-      content: response.answer,
-      sources: response.sources,
-      createdAt: response.createdAt
-    })
+    const eventSource = sendMessageStream(
+      {
+        message,
+        conversationId: chatStore.currentConversationId
+      },
+      {
+        // 状态回调
+        onStatus: (status) => {
+          currentStatus.value = status.phase
+          statusMessage.value = status.message
+          console.log('状态:', status)
+        },
+        
+        // 来源回调
+        onSources: (sourcesData) => {
+          sources = sourcesData
+          chatStore.messages[aiMessageIndex].sources = sources
+          console.log('来源:', sources)
+        },
+        
+        // 内容回调
+        onContent: (chunk) => {
+          fullContent += chunk
+          chatStore.messages[aiMessageIndex].content = fullContent
+          scrollToBottom()
+        },
+        
+        // 完成回调
+        onDone: (result) => {
+          console.log('完成:', result)
+          chatStore.messages[aiMessageIndex].streaming = false
+          
+          // 更新会话ID
+          if (!chatStore.currentConversationId) {
+            chatStore.selectConversation(result.conversationId)
+            chatStore.loadConversations()
+          }
+          
+          loading.value = false
+          currentStatus.value = ''
+          statusMessage.value = ''
+        },
+        
+        // 错误回调
+        onError: (error) => {
+          console.error('错误:', error)
+          ElMessage.error('发送失败，请重试')
+          chatStore.messages.splice(aiMessageIndex, 1) // 删除AI消息占位符
+          loading.value = false
+          currentStatus.value = ''
+          statusMessage.value = ''
+        }
+      }
+    )
     
-    // 更新会话ID
-    if (!chatStore.currentConversationId) {
-      chatStore.selectConversation(response.conversationId)
-      await chatStore.loadConversations()
-    }
-    
-    scrollToBottom()
   } catch (error) {
+    console.error('发送失败:', error)
     ElMessage.error('发送失败，请重试')
-  } finally {
     loading.value = false
+    currentStatus.value = ''
+    statusMessage.value = ''
   }
 }
 
@@ -411,6 +473,47 @@ function formatTime(time) {
   30% {
     transform: translateY(-10px);
     opacity: 1;
+  }
+}
+
+.status-indicator {
+  padding: 12px 16px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.status-badge.thinking {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.status-badge.retrieving {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.status-badge.generating {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.status-badge .spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 
