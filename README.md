@@ -1,5 +1,29 @@
 # IT知识问答机器人 - 项目结构设计文档
 
+## 📋 项目概述
+
+本项目是一个基于**RAG(Retrieval-Augmented Generation)**技术的智能IT知识问答机器人,采用前后端分离架构,结合Spring Boot、Vue.js、PostgreSQL、Milvus等现代化技术栈实现。
+
+### 核心功能
+- 💬 智能问答: 基于RAG技术提供准确的IT知识问答
+- 📚 知识库管理: 支持文档上传、分类、检索和向量化
+- 💾 对话历史: 支持多轮对话,保存对话记录
+- ⚙️ 系统配置: 灵活的系统参数配置
+- 📊 数据统计: 问答统计和系统监控
+
+### 支持的文档格式
+- **PDF** (.pdf) - 使用Apache PDFBox解析
+- **TXT** (.txt) - 使用Java原生API解析
+- **Markdown** (.md) - 使用Flexmark解析
+- **Word** (.docx, .doc) - 使用Apache POI解析
+- **PowerPoint** (.pptx, .ppt) - 使用Apache POI解析
+
+### 技术亮点
+- ✨ 使用**LangChain4j**进行智能文本切块(递归分割、语义保持)
+- ✨ 支持灵活的chunking策略配置
+- ✨ 根据文档类型自动选择最优解析和分割策略
+- ✨ 完整的文档解析器工厂模式实现
+
 ## 1. 系统整体架构
 
 ### 1.1 架构概述
@@ -88,9 +112,9 @@
 ```
 管理员上传文档
     ↓
-[后端] 文档解析(支持PDF、TXT、MD等格式)
+[后端] 文档解析(支持PDF、TXT、MD、DOCX、PPT、PPTX等格式)
     ↓
-[后端] 文本切块(按段落、句子或固定长度)
+[LangChain4j] 智能文本切块(递归分割、语义保持)
     ↓
 [阿里云Embedding] 文本块向量化
     ↓
@@ -156,7 +180,7 @@ CREATE TABLE knowledge_docs (
     file_name VARCHAR(255),
     file_path VARCHAR(500),
     file_size BIGINT,
-    file_type VARCHAR(50),  -- pdf, txt, md, docx
+    file_type VARCHAR(50),  -- pdf, txt, md, docx, doc, ppt, pptx
     category VARCHAR(100),  -- 课程简介、实验室介绍、常见问题
     status VARCHAR(20) DEFAULT 'ACTIVE',  -- ACTIVE, INACTIVE, DELETED
     vector_count INTEGER DEFAULT 0,  -- 关联的向量数量
@@ -777,6 +801,47 @@ it-qabot/
         <version>2.0.29</version>
     </dependency>
     
+    <!-- LangChain4j核心 -->
+    <dependency>
+        <groupId>dev.langchain4j</groupId>
+        <artifactId>langchain4j</artifactId>
+        <version>0.27.1</version>
+    </dependency>
+    
+    <!-- LangChain4j文档分割器 -->
+    <dependency>
+        <groupId>dev.langchain4j</groupId>
+        <artifactId>langchain4j-document-splitter</artifactId>
+        <version>0.27.1</version>
+    </dependency>
+    
+    <!-- Word/PowerPoint文档解析 -->
+    <dependency>
+        <groupId>org.apache.poi</groupId>
+        <artifactId>poi-ooxml</artifactId>
+        <version>5.2.3</version>
+    </dependency>
+    
+    <dependency>
+        <groupId>org.apache.poi</groupId>
+        <artifactId>poi-ooxml-full</artifactId>
+        <version>5.2.3</version>
+    </dependency>
+    
+    <!-- Markdown解析 -->
+    <dependency>
+        <groupId>com.vladsch.flexmark</groupId>
+        <artifactId>flexmark-all</artifactId>
+        <version>0.64.8</version>
+    </dependency>
+    
+    <!-- HTML解析 -->
+    <dependency>
+        <groupId>org.jsoup</groupId>
+        <artifactId>jsoup</artifactId>
+        <version>1.16.1</version>
+    </dependency>
+    
     <!-- Swagger API文档 -->
     <dependency>
         <groupId>com.github.xiaoymin</groupId>
@@ -1140,8 +1205,10 @@ docker-compose exec backend java -jar app.jar --init-milvus
 
 ### 9.1 RAG实现要点
 1. **文档预处理**: 
-   - 支持多种格式(PDF、TXT、MD、DOCX)
-   - 智能文本切块(按段落、语义分割)
+   - 支持多种格式(PDF、TXT、MD、DOCX、PPT、PPTX)
+   - 使用LangChain4j智能文本切块(递归分割、语义保持)
+   - 配置灵活的分隔符策略(段落、句子、标点符号)
+   - 支持chunk重叠保持上下文连贯性
    - 去除噪声(特殊字符、格式标记)
 
 2. **向量检索**:
@@ -1172,6 +1239,131 @@ docker-compose exec backend java -jar app.jar --init-milvus
 - **缓存策略**: 对热点知识库内容进行Redis缓存
 - **异步处理**: 文档上传和向量化使用异步队列
 - **连接池**: 合理配置数据库和HTTP连接池大小
+
+#### 9.2.1 文档解析与Chunking最佳实践
+
+**1. 使用LangChain4j进行智能Chunking**
+
+```java
+// 递归字符分割器(推荐用于中文文档)
+DocumentSplitter splitter = DocumentSplitters.recursive(
+    500,  // chunkSize - 每个chunk的最大字符数
+    50,   // overlapSize - chunk之间的重叠字符数
+    1,    // minimumChunkSizeToEmbed - 最小chunk大小
+    // 分隔符优先级(从高到低)
+    "\n\n",  // 双换行(段落)
+    "\n",    // 单换行
+    "。",    // 中文句号
+    "！",    // 中文感叹号
+    "？",    // 中文问号
+    ".",     // 英文句号
+    "!",     // 英文感叹号
+    "?",     // 英文问号
+    " ",     // 空格
+    ""       // 无分隔符(强制分割)
+);
+```
+
+**2. 不同文档类型的Chunking策略**
+
+| 文档类型 | 推荐策略 | Chunk大小 | 重叠大小 | 说明 |
+|---------|---------|----------|---------|------|
+| PDF | 递归分割 | 800-1000 | 100-150 | 按段落和句子切分 |
+| Markdown | 递归分割 | 600-900 | 80-120 | 保留标题结构 |
+| TXT | 按段落分割 | 500-800 | 50-100 | 纯文本按段落 |
+| DOCX | 递归分割 | 700-900 | 80-120 | 保留文档结构 |
+| PPT/PPTX | 递归分割 | 400-600 | 50-80 | 按幻灯片切分 |
+| 代码文件 | 按行分割 | 300-500 | 30-50 | 保持代码完整性 |
+
+**3. 文档解析器实现**
+
+```java
+// PDF解析器
+public class PdfDocumentParser implements DocumentParser {
+    public String parse(String filePath) {
+        try (PDDocument document = PDDocument.load(new File(filePath))) {
+            PDFTextStripper stripper = new PDFTextStripper();
+            stripper.setSortByPosition(true);
+            stripper.setLineSeparator("\n");
+            return cleanText(stripper.getText(document));
+        }
+    }
+}
+
+// PPT/PPTX解析器
+public class PptDocumentParser implements DocumentParser {
+    public String parse(String filePath) {
+        try (XMLSlideShow ppt = new XMLSlideShow(new FileInputStream(filePath))) {
+            StringBuilder text = new StringBuilder();
+            for (XSLFSlide slide : ppt.getSlides()) {
+                for (XSLFShape shape : slide.getShapes()) {
+                    if (shape instanceof XSLFTextShape) {
+                        XSLFTextShape textShape = (XSLFTextShape) shape;
+                        text.append(textShape.getText()).append("\n");
+                    }
+                }
+                text.append("\n--- Slide ---\n");
+            }
+            return text.toString();
+        }
+    }
+}
+```
+
+**4. 完整的文档处理流程**
+
+```java
+@Async
+public void processDocument(Long docId) {
+    // 1. 获取文档
+    KnowledgeDoc doc = docMapper.selectById(docId);
+    
+    // 2. 根据文件类型选择解析器
+    DocumentParser parser = parserFactory.getParser(doc.getFileType());
+    String content = parser.parse(doc.getFilePath());
+    
+    // 3. 使用LangChain4j进行智能分割
+    Document document = Document.from(content);
+    DocumentSplitter splitter = getSplitterForFileType(doc.getFileType());
+    List<TextSegment> segments = splitter.split(document);
+    
+    // 4. 批量向量化
+    List<float[]> vectors = aiService.getTextEmbeddings(
+        segments.stream().map(TextSegment::text).collect(Collectors.toList())
+    );
+    
+    // 5. 存储到Milvus和PostgreSQL
+    saveChunks(docId, segments, vectors);
+    
+    // 6. 更新文档状态
+    doc.setStatus("COMPLETED");
+    doc.setVectorCount(segments.size());
+    docMapper.updateById(doc);
+}
+```
+
+**5. 配置化Chunking参数**
+
+```yaml
+# application.yml
+chunking:
+  strategy: recursive  # recursive/paragraph/line/character
+  max-size: 500
+  overlap-size: 50
+  min-chunk-size: 1
+  separators: '\n\n,\n,。,！,？,.,!,?, ,'
+  
+  document-types:
+    pdf:
+      max-size: 800
+      overlap-size: 100
+    md:
+      max-size: 600
+      overlap-size: 80
+    ppt:
+      max-size: 400
+      overlap-size: 50
+```
 
 ### 9.3 安全性考虑
 - **API密钥**: 使用环境变量存储,不提交到代码仓库
@@ -1250,4 +1442,29 @@ logging:
 - ✅ 向量数据库支持高效的语义检索
 - ✅ 容器化部署,易于扩展和维护
 - ✅ 完整的知识库管理功能
+- ✅ 使用**LangChain4j**进行智能文本切块,保证语义完整性
+- ✅ 支持**多种文档格式**(PDF、TXT、MD、DOCX、PPT、PPTX)
+- ✅ 灵活的chunking策略配置,根据文档类型自动优化
+- ✅ 完整的文档解析器工厂模式实现
+
+## 📚 相关文档
+
+- [数据库设计](./docs/数据库设计.sql) - PostgreSQL数据库结构设计
+- [API接口设计](./docs/API接口设计.yaml) - RESTful API接口文档
+- [IT知识问答机器人_项目结构设计](./docs/IT知识问答机器人_项目结构设计.md) - 详细的项目结构设计
+- [前端界面设计](./docs/前端界面设计.md) - 前端界面设计规范
+- [项目快速入门指南](./docs/项目快速入门指南.md) - 快速开始指南
+- [文档解析器实现指南](./docs/文档解析器实现指南.md) - 文档解析器详细实现指南
+
+## 🔗 参考资源
+
+- [Spring Boot官方文档](https://spring.io/projects/spring-boot)
+- [Vue.js 3官方文档](https://vuejs.org/)
+- [LangChain4j官方文档](https://docs.langchain4j.dev/)
+- [Milvus向量数据库](https://milvus.io/)
+- [Apache PDFBox](https://pdfbox.apache.org/)
+- [Apache POI](https://poi.apache.org/)
+
+---
+
 
