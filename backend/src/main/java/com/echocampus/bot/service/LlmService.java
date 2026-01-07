@@ -1,5 +1,7 @@
 package com.echocampus.bot.service;
 
+import com.echocampus.bot.entity.Message;
+
 import java.util.List;
 
 /**
@@ -40,6 +42,16 @@ public interface LlmService {
      * @return AI回复
      */
     String ragAnswer(String question, String context);
+
+    /**
+     * RAG问答（带知识库上下文和历史消息）
+     *
+     * @param question 用户问题
+     * @param context 检索到的知识库上下文
+     * @param historyMessages 历史消息
+     * @return AI回复
+     */
+    String ragAnswer(String question, String context, List<Message> historyMessages);
 
     /**
      * 检查服务是否可用

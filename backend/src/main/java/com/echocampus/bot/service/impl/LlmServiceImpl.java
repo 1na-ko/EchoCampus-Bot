@@ -1,6 +1,7 @@
 package com.echocampus.bot.service.impl;
 
 import com.echocampus.bot.config.AiConfig;
+import com.echocampus.bot.entity.Message;
 import com.echocampus.bot.service.LlmService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -150,6 +151,40 @@ public class LlmServiceImpl implements LlmService {
         // 使用RAG模板
         String systemPrompt = String.format(RAG_SYSTEM_PROMPT, context);
         return chat(systemPrompt, question);
+    }
+
+    @Override
+    public String ragAnswer(String question, String context, List<Message> historyMessages) {
+        // 构建消息列表
+        List<ChatMessage> messages = new ArrayList<>();
+        
+        // 1. 添加系统提示词（包含知识库上下文）
+        if (context != null && !context.trim().isEmpty()) {
+            String systemPrompt = String.format(RAG_SYSTEM_PROMPT, context);
+            messages.add(ChatMessage.system(systemPrompt));
+        } else {
+            messages.add(ChatMessage.system("你是EchoCampus智能校园问答助手。当前知识库中没有找到与该问题相关的内容，请告知用户。"));
+        }
+        
+        // 2. 添加历史消息（排除当前问题）
+        if (historyMessages != null && !historyMessages.isEmpty()) {
+            // 只取最近10轮对话（20条消息）
+            historyMessages.stream()
+                    .limit(20)
+                    .forEach(msg -> {
+                        if ("USER".equals(msg.getSenderType())) {
+                            messages.add(ChatMessage.user(msg.getContent()));
+                        } else if ("BOT".equals(msg.getSenderType())) {
+                            messages.add(ChatMessage.assistant(msg.getContent()));
+                        }
+                    });
+        }
+        
+        // 3. 添加当前问题
+        messages.add(ChatMessage.user(question));
+        
+        // 4. 调用LLM
+        return chat(messages);
     }
 
     @Override

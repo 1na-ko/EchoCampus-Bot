@@ -104,10 +104,46 @@ public class MilvusServiceImpl implements MilvusService {
         );
 
         if (hasCollection.getData()) {
-            log.info("Milvus集合已存在: {}", collectionName);
-            // 加载集合到内存
-            loadCollection();
-            return;
+            // 检查维度是否匹配
+            R<DescribeCollectionResponse> descResp = milvusClient.describeCollection(
+                    DescribeCollectionParam.newBuilder()
+                            .withCollectionName(collectionName)
+                            .build()
+            );
+            
+            if (descResp.getStatus() == R.Status.Success.getCode()) {
+                // 检查vector字段的维度
+                for (FieldSchema field : descResp.getData().getSchema().getFieldsList()) {
+                    if (FIELD_VECTOR.equals(field.getName())) {
+                        long existingDim = field.getTypeParamsList().stream()
+                                .filter(p -> "dim".equals(p.getKey()))
+                                .findFirst()
+                                .map(p -> Long.parseLong(p.getValue()))
+                                .orElse(0L);
+                        
+                        if (existingDim != milvusConfig.getDimension()) {
+                            log.warn("Milvus集合维度不匹配! 现有:{}, 配置:{}, 将删除并重建集合", 
+                                    existingDim, milvusConfig.getDimension());
+                            dropCollection();
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // 重新检查集合是否存在
+            hasCollection = milvusClient.hasCollection(
+                    HasCollectionParam.newBuilder()
+                            .withCollectionName(collectionName)
+                            .build()
+            );
+            
+            if (hasCollection.getData()) {
+                log.info("Milvus集合已存在: {}", collectionName);
+                // 加载集合到内存
+                loadCollection();
+                return;
+            }
         }
 
         // 创建集合
@@ -208,6 +244,37 @@ public class MilvusServiceImpl implements MilvusService {
         }
     }
 
+    /**
+     * 删除集合
+     */
+    private void dropCollection() {
+        String collectionName = milvusConfig.getCollectionName();
+        
+        try {
+            // 先释放集合
+            milvusClient.releaseCollection(
+                    ReleaseCollectionParam.newBuilder()
+                            .withCollectionName(collectionName)
+                            .build()
+            );
+            
+            // 再删除集合
+            R<RpcStatus> dropResult = milvusClient.dropCollection(
+                    DropCollectionParam.newBuilder()
+                            .withCollectionName(collectionName)
+                            .build()
+            );
+            
+            if (dropResult.getStatus() == R.Status.Success.getCode()) {
+                log.info("Milvus集合已删除: {}", collectionName);
+            } else {
+                log.error("删除Milvus集合失败: {}", dropResult.getMessage());
+            }
+        } catch (Exception e) {
+            log.error("删除Milvus集合异常: {}", e.getMessage());
+        }
+    }
+
     @Override
     public List<String> insertVectors(List<float[]> vectors, List<Long> chunkIds, List<Long> docIds,
                                        List<String> contents, List<String> categories) {
@@ -302,11 +369,31 @@ public class MilvusServiceImpl implements MilvusService {
             }
 
             SearchResult result = new SearchResult();
-            result.setVectorId((String) row.get(FIELD_ID));
-            result.setChunkId((Long) row.get(FIELD_CHUNK_ID));
-            result.setDocId((Long) row.get(FIELD_DOC_ID));
-            result.setContent((String) row.get(FIELD_CONTENT));
-            result.setCategory((String) row.get(FIELD_CATEGORY));
+            
+            // 安全获取字段值，处理类型转换
+            Object idObj = row.get(FIELD_ID);
+            result.setVectorId(idObj != null ? idObj.toString() : "");
+            
+            Object chunkIdObj = row.get(FIELD_CHUNK_ID);
+            if (chunkIdObj instanceof Long) {
+                result.setChunkId((Long) chunkIdObj);
+            } else if (chunkIdObj != null) {
+                result.setChunkId(Long.parseLong(chunkIdObj.toString()));
+            }
+            
+            Object docIdObj = row.get(FIELD_DOC_ID);
+            if (docIdObj instanceof Long) {
+                result.setDocId((Long) docIdObj);
+            } else if (docIdObj != null) {
+                result.setDocId(Long.parseLong(docIdObj.toString()));
+            }
+            
+            Object contentObj = row.get(FIELD_CONTENT);
+            result.setContent(contentObj != null ? contentObj.toString() : "");
+            
+            Object categoryObj = row.get(FIELD_CATEGORY);
+            result.setCategory(categoryObj != null ? categoryObj.toString() : "");
+            
             result.setScore(similarity);
             
             results.add(result);
