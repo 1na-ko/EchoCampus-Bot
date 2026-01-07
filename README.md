@@ -63,7 +63,7 @@
 - **特色功能**: 响应式设计、Markdown渲染、代码高亮
 
 #### 后端层 (Business Logic Layer)
-- **框架**: Spring Boot 2.x/3.x
+- **框架**: Spring Boot 4.0.1
 - **ORM框架**: MyBatis-Plus
 - **数据库连接池**: Druid
 - **API文档**: Swagger/OpenAPI
