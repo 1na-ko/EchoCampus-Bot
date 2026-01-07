@@ -6,8 +6,6 @@
 CREATE DATABASE echocampus_bot
     WITH 
     ENCODING = 'UTF8'
-    LC_COLLATE = 'zh_CN.UTF-8'
-    LC_CTYPE = 'zh_CN.UTF-8'
     CONNECTION LIMIT = -1;
 
 -- 使用数据库
@@ -36,7 +34,7 @@ CREATE INDEX idx_users_status ON users(status);
 
 -- 插入默认管理员用户 (密码: admin123)
 INSERT INTO users (username, password, email, nickname, role, status) VALUES 
-('admin', '$2a$10$7JB720yubVSZFyL9BbGfQe1C6PQRJZG6fGS.0FdJMR5N1h6W5GPTG', 'admin@example.com', '管理员', 'ADMIN', 'ACTIVE');
+('admin', '$2a$10$7JB720yubVSZFyL9BbGfQe1C6PQRJZG6fGS.0FdJMR5N1h6W5GPTG', 'admin@example.com', 'Admin', 'ADMIN', 'ACTIVE');
 
 -- ============================================
 -- 2. 对话会话表 (conversations)
@@ -397,16 +395,4 @@ GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO qabot_writer;
 -- 备注
 -- ============================================
 
-COMMENT ON TABLE users IS '用户信息表';
-COMMENT ON TABLE conversations IS '对话会话表';
-COMMENT ON TABLE messages IS '对话消息表';
-COMMENT ON TABLE knowledge_docs IS '知识库文档表';
-COMMENT ON TABLE knowledge_chunks IS '知识库文档片段表';
-COMMENT ON TABLE search_logs IS '检索日志表';
-COMMENT ON TABLE system_config IS '系统配置表';
-COMMENT ON TABLE operation_logs IS '操作日志表';
-COMMENT ON TABLE knowledge_categories IS '知识库分类表';
-COMMENT ON TABLE system_statistics IS '系统统计表';
 
--- 完成
-SELECT '数据库创建完成!' AS message;
