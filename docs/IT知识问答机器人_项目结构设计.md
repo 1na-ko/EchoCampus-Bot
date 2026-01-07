@@ -88,9 +88,9 @@
 ```
 管理员上传文档
     ↓
-[后端] 文档解析(支持PDF、TXT、MD等格式)
+[后端] 文档解析(支持PDF、TXT、MD、DOCX、PPT、PPTX等格式)
     ↓
-[后端] 文本切块(按段落、句子或固定长度)
+[LangChain4j] 智能文本切块(递归分割、语义保持)
     ↓
 [阿里云Embedding] 文本块向量化
     ↓
@@ -156,7 +156,7 @@ CREATE TABLE knowledge_docs (
     file_name VARCHAR(255),
     file_path VARCHAR(500),
     file_size BIGINT,
-    file_type VARCHAR(50),  -- pdf, txt, md, docx
+    file_type VARCHAR(50),  -- pdf, txt, md, docx, doc, ppt, pptx
     category VARCHAR(100),  -- 课程简介、实验室介绍、常见问题
     status VARCHAR(20) DEFAULT 'ACTIVE',  -- ACTIVE, INACTIVE, DELETED
     vector_count INTEGER DEFAULT 0,  -- 关联的向量数量
@@ -1140,8 +1140,10 @@ docker-compose exec backend java -jar app.jar --init-milvus
 
 ### 9.1 RAG实现要点
 1. **文档预处理**: 
-   - 支持多种格式(PDF、TXT、MD、DOCX)
-   - 智能文本切块(按段落、语义分割)
+   - 支持多种格式(PDF、TXT、MD、DOCX、PPT、PPTX)
+   - 使用LangChain4j智能文本切块(递归分割、语义保持)
+   - 配置灵活的分隔符策略(段落、句子、标点符号)
+   - 支持chunk重叠保持上下文连贯性
    - 去除噪声(特殊字符、格式标记)
 
 2. **向量检索**:
@@ -1172,6 +1174,131 @@ docker-compose exec backend java -jar app.jar --init-milvus
 - **缓存策略**: 对热点知识库内容进行Redis缓存
 - **异步处理**: 文档上传和向量化使用异步队列
 - **连接池**: 合理配置数据库和HTTP连接池大小
+
+#### 9.2.1 文档解析与Chunking最佳实践
+
+**1. 使用LangChain4j进行智能Chunking**
+
+```java
+// 递归字符分割器(推荐用于中文文档)
+DocumentSplitter splitter = DocumentSplitters.recursive(
+    500,  // chunkSize - 每个chunk的最大字符数
+    50,   // overlapSize - chunk之间的重叠字符数
+    1,    // minimumChunkSizeToEmbed - 最小chunk大小
+    // 分隔符优先级(从高到低)
+    "\n\n",  // 双换行(段落)
+    "\n",    // 单换行
+    "。",    // 中文句号
+    "！",    // 中文感叹号
+    "？",    // 中文问号
+    ".",     // 英文句号
+    "!",     // 英文感叹号
+    "?",     // 英文问号
+    " ",     // 空格
+    ""       // 无分隔符(强制分割)
+);
+```
+
+**2. 不同文档类型的Chunking策略**
+
+| 文档类型 | 推荐策略 | Chunk大小 | 重叠大小 | 说明 |
+|---------|---------|----------|---------|------|
+| PDF | 递归分割 | 800-1000 | 100-150 | 按段落和句子切分 |
+| Markdown | 递归分割 | 600-900 | 80-120 | 保留标题结构 |
+| TXT | 按段落分割 | 500-800 | 50-100 | 纯文本按段落 |
+| DOCX | 递归分割 | 700-900 | 80-120 | 保留文档结构 |
+| PPT/PPTX | 递归分割 | 400-600 | 50-80 | 按幻灯片切分 |
+| 代码文件 | 按行分割 | 300-500 | 30-50 | 保持代码完整性 |
+
+**3. 文档解析器实现**
+
+```java
+// PDF解析器
+public class PdfDocumentParser implements DocumentParser {
+    public String parse(String filePath) {
+        try (PDDocument document = PDDocument.load(new File(filePath))) {
+            PDFTextStripper stripper = new PDFTextStripper();
+            stripper.setSortByPosition(true);
+            stripper.setLineSeparator("\n");
+            return cleanText(stripper.getText(document));
+        }
+    }
+}
+
+// PPT/PPTX解析器
+public class PptDocumentParser implements DocumentParser {
+    public String parse(String filePath) {
+        try (XMLSlideShow ppt = new XMLSlideShow(new FileInputStream(filePath))) {
+            StringBuilder text = new StringBuilder();
+            for (XSLFSlide slide : ppt.getSlides()) {
+                for (XSLFShape shape : slide.getShapes()) {
+                    if (shape instanceof XSLFTextShape) {
+                        XSLFTextShape textShape = (XSLFTextShape) shape;
+                        text.append(textShape.getText()).append("\n");
+                    }
+                }
+                text.append("\n--- Slide ---\n");
+            }
+            return text.toString();
+        }
+    }
+}
+```
+
+**4. 完整的文档处理流程**
+
+```java
+@Async
+public void processDocument(Long docId) {
+    // 1. 获取文档
+    KnowledgeDoc doc = docMapper.selectById(docId);
+    
+    // 2. 根据文件类型选择解析器
+    DocumentParser parser = parserFactory.getParser(doc.getFileType());
+    String content = parser.parse(doc.getFilePath());
+    
+    // 3. 使用LangChain4j进行智能分割
+    Document document = Document.from(content);
+    DocumentSplitter splitter = getSplitterForFileType(doc.getFileType());
+    List<TextSegment> segments = splitter.split(document);
+    
+    // 4. 批量向量化
+    List<float[]> vectors = aiService.getTextEmbeddings(
+        segments.stream().map(TextSegment::text).collect(Collectors.toList())
+    );
+    
+    // 5. 存储到Milvus和PostgreSQL
+    saveChunks(docId, segments, vectors);
+    
+    // 6. 更新文档状态
+    doc.setStatus("COMPLETED");
+    doc.setVectorCount(segments.size());
+    docMapper.updateById(doc);
+}
+```
+
+**5. 配置化Chunking参数**
+
+```yaml
+# application.yml
+chunking:
+  strategy: recursive  # recursive/paragraph/line/character
+  max-size: 500
+  overlap-size: 50
+  min-chunk-size: 1
+  separators: '\n\n,\n,。,！,？,.,!,?, ,'
+  
+  document-types:
+    pdf:
+      max-size: 800
+      overlap-size: 100
+    md:
+      max-size: 600
+      overlap-size: 80
+    ppt:
+      max-size: 400
+      overlap-size: 50
+```
 
 ### 9.3 安全性考虑
 - **API密钥**: 使用环境变量存储,不提交到代码仓库
