@@ -22,7 +22,6 @@ CREATE TABLE users (
     password VARCHAR(255) NOT NULL,
     email VARCHAR(100) UNIQUE,
     nickname VARCHAR(50),
-    avatar VARCHAR(255) DEFAULT '/assets/avatar/default.png',
     role VARCHAR(20) DEFAULT 'USER',  -- USER, ADMIN
     status VARCHAR(20) DEFAULT 'ACTIVE',  -- ACTIVE, INACTIVE, LOCKED
     last_login_at TIMESTAMP,
