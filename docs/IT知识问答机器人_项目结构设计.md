@@ -39,7 +39,7 @@
 - **特色功能**: 响应式设计、Markdown渲染、代码高亮
 
 #### 后端层 (Business Logic Layer)
-- **框架**: Spring Boot 2.x/3.x
+- **框架**: Spring Boot 4.0.1
 - **ORM框架**: MyBatis-Plus
 - **数据库连接池**: Druid
 - **API文档**: Swagger/OpenAPI
@@ -47,9 +47,9 @@
 - **依赖管理**: Maven
 
 #### 数据存储层 (Data Layer)
-- **关系型数据库**: PostgreSQL 14+
+- **关系型数据库**: PostgreSQL 18.1
   - 存储用户信息、对话历史、知识库元数据
-- **向量数据库**: Milvus 2.x
+- **向量数据库**: Milvus v2.6.8
   - 存储知识库文档的向量化表示
   - 支持高效的相似度检索
 
