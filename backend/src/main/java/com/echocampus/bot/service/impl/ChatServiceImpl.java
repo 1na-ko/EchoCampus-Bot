@@ -56,9 +56,18 @@ public class ChatServiceImpl implements ChatService {
         userMessage.setContent(request.getMessage());
         messageMapper.insert(userMessage);
         
-        // 3. 调用RAG服务生成回复
+        // 3. 获取历史消息（最近N轮对话）
+        List<Message> historyMessages = messageMapper.selectByConversationId(conversation.getId());
+        // 按时间排序，只取最近10轮对话（20条消息）
+        List<Message> recentMessages = historyMessages.stream()
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .limit(20)
+                .sorted((a, b) -> a.getCreatedAt().compareTo(b.getCreatedAt()))
+                .collect(Collectors.toList());
+        
+        // 4. 调用RAG服务生成回复（携带历史消息）
         RagService.RagResponse ragResponse = ragService.answer(
-                request.getMessage(), userId, conversation.getId());
+                request.getMessage(), recentMessages, userId, conversation.getId());
                 
         String aiAnswer = ragResponse.answer();
         List<ChatResponse.SourceDoc> sources = ragResponse.sources().stream()
@@ -70,7 +79,7 @@ public class ChatServiceImpl implements ChatService {
                         .build())
                 .collect(Collectors.toList());
 
-        // 4. 保存AI回复消息
+        // 5. 保存AI回复消息
         Message botMessage = new Message();
         botMessage.setConversationId(conversation.getId());
         botMessage.setParentMessageId(userMessage.getId());
@@ -78,7 +87,7 @@ public class ChatServiceImpl implements ChatService {
         botMessage.setContent(aiAnswer);
         messageMapper.insert(botMessage);
 
-        // 5. 构建响应
+        // 6. 构建响应
         long responseTime = System.currentTimeMillis() - startTime;
         
         return ChatResponse.builder()
