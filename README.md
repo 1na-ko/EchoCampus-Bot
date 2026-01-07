@@ -69,6 +69,12 @@
 - **API文档**: Swagger/OpenAPI
 - **安全框架**: Spring Security (可选)
 - **依赖管理**: Maven
+- **文档解析**: LangChain4j + Apache POI + Apache PDFBox
+  - LangChain4j: 智能文本切块(递归分割、语义保持)
+  - Apache PDFBox: PDF文档解析
+  - Apache POI: Word/PowerPoint文档解析
+  - Flexmark: Markdown文档解析
+  - Jsoup: HTML解析
 
 #### 数据存储层 (Data Layer)
 - **关系型数据库**: PostgreSQL 14+
