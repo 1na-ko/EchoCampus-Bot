@@ -103,7 +103,7 @@ CREATE TABLE knowledge_docs (
     file_name VARCHAR(255),
     file_path VARCHAR(500),
     file_size BIGINT,
-    file_type VARCHAR(50),  -- pdf, txt, md, docx, doc
+    file_type VARCHAR(50),  -- pdf, txt, md, docx, doc, ppt, pptx
     category VARCHAR(100),  -- 课程简介、实验室介绍、常见问题
     tags VARCHAR(500),  -- 标签,逗号分隔
     status VARCHAR(20) DEFAULT 'ACTIVE',  -- ACTIVE, INACTIVE, PROCESSING, FAILED
@@ -197,9 +197,12 @@ INSERT INTO system_config (config_key, config_value, config_type, description) V
 ('llm.max_tokens', '1000', 'NUMBER', 'LLM生成最大token数'),
 ('llm.timeout', '30', 'NUMBER', 'LLM API超时时间(秒)'),
 ('file.upload.max_size', '10485760', 'NUMBER', '文件上传最大大小(字节,10MB)'),
-('file.allowed_types', 'pdf,txt,md,docx,doc', 'STRING', '允许上传的文件类型'),
-('chunk.max_size', '500', 'NUMBER', '文本切块最大字符数'),
-('chunk.overlap', '50', 'NUMBER', '文本切块重叠字符数'),
+('file.allowed_types', 'pdf,txt,md,docx,doc,ppt,pptx', 'STRING', '允许上传的文件类型'),
+('chunking.strategy', 'recursive', 'STRING', '文本切块策略(recursive/paragraph/line/character)'),
+('chunking.max_size', '500', 'NUMBER', '文本切块最大字符数'),
+('chunking.overlap_size', '50', 'NUMBER', '文本切块重叠字符数'),
+('chunking.min_chunk_size', '1', 'NUMBER', '文本切块最小字符数'),
+('chunking.separators', '\n\n,\n,。,！,？,.,!,?, ,', 'STRING', '递归分割的分隔符(逗号分隔)'),
 ('system.name', 'IT知识问答机器人', 'STRING', '系统名称'),
 ('system.description', '基于RAG技术的智能IT知识问答系统', 'STRING', '系统描述');
 
