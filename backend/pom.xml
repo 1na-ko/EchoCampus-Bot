@@ -125,6 +125,20 @@
             <version>${poi.version}</version>
         </dependency>
 
+        <!-- Markdown解析 -->
+        <dependency>
+            <groupId>com.vladsch.flexmark</groupId>
+            <artifactId>flexmark-all</artifactId>
+            <version>0.64.8</version>
+        </dependency>
+
+        <!-- HTML解析 -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.17.2</version>
+        </dependency>
+
         <!-- Apache Commons -->
         <dependency>
             <groupId>org.apache.commons</groupId>
