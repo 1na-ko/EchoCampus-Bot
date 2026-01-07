@@ -9,6 +9,7 @@ import com.echocampus.bot.entity.Message;
 import com.echocampus.bot.mapper.ConversationMapper;
 import com.echocampus.bot.mapper.MessageMapper;
 import com.echocampus.bot.service.ChatService;
+import com.echocampus.bot.service.RagService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 聊天服务实现类
@@ -28,9 +30,7 @@ public class ChatServiceImpl implements ChatService {
 
     private final ConversationMapper conversationMapper;
     private final MessageMapper messageMapper;
-    // TODO: 后续集成AI服务
-    // private final AiService aiService;
-    // private final MilvusService milvusService;
+    private final RagService ragService;
 
     @Override
     @Transactional
@@ -55,11 +55,20 @@ public class ChatServiceImpl implements ChatService {
         userMessage.setSenderType("USER");
         userMessage.setContent(request.getMessage());
         messageMapper.insert(userMessage);
-
-        // 3. TODO: 调用AI服务生成回复
-        // 目前返回模拟回复
-        String aiAnswer = "您好！我是EchoCampus智能助手。您的问题是：\"" + request.getMessage() + 
-                "\"。\n\n目前AI服务正在集成中，稍后将提供完整的RAG问答功能。";
+        
+        // 3. 调用RAG服务生成回复
+        RagService.RagResponse ragResponse = ragService.answer(
+                request.getMessage(), userId, conversation.getId());
+                
+        String aiAnswer = ragResponse.answer();
+        List<ChatResponse.SourceDoc> sources = ragResponse.sources().stream()
+                .map(s -> ChatResponse.SourceDoc.builder()
+                        .docId(s.docId())
+                        .title(s.docTitle())
+                        .content(s.content())
+                        .similarity(s.score())
+                        .build())
+                .collect(Collectors.toList());
 
         // 4. 保存AI回复消息
         Message botMessage = new Message();
@@ -76,7 +85,7 @@ public class ChatServiceImpl implements ChatService {
                 .messageId(botMessage.getId())
                 .conversationId(conversation.getId())
                 .answer(aiAnswer)
-                .sources(new ArrayList<>())
+                .sources(sources)
                 .usage(ChatResponse.TokenUsage.builder()
                         .promptTokens(0)
                         .completionTokens(0)
