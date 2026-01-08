@@ -5,7 +5,6 @@ import com.echocampus.bot.entity.KnowledgeChunk;
 import com.echocampus.bot.entity.Message;
 
 import java.util.List;
-import java.util.function.Consumer;
 
 /**
  * RAG检索增强生成服务接口
@@ -22,20 +21,6 @@ public interface RagService {
      * @return 问答响应
      */
     RagResponse answer(String question, List<Message> historyMessages, Long userId, Long conversationId);
-    
-    /**
-     * RAG问答（流式输出）
-     *
-     * @param question 用户问题
-     * @param historyMessages 历史消息列表
-     * @param userId 用户ID
-     * @param conversationId 会话 ID
-     * @param onRetrieved 检索完成回调
-     * @param onContent 内容块回调
-     * @return 问答响应
-     */
-    RagResponse answerStream(String question, List<Message> historyMessages, Long userId, Long conversationId,
-                             Consumer<List<SourceDoc>> onRetrieved, Consumer<String> onContent);
 
     /**
      * 检索相关知识片段
@@ -62,16 +47,6 @@ public interface RagService {
             Long docId,
             String docTitle,
             Long chunkId,
-            String content,
-            Float score
-    ) {}
-
-    /**
-     * 来源文档（简化版）
-     */
-    record SourceDoc(
-            Long docId,
-            String docTitle,
             String content,
             Float score
     ) {}

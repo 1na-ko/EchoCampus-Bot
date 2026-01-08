@@ -148,17 +148,38 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     @Transactional
     public void deleteDocument(Long docId) {
         KnowledgeDoc doc = getDocumentById(docId);
-        doc.setStatus("DELETED");
-        knowledgeDocMapper.updateById(doc);
         
-        // 删除Milvus中的向量
+        // 1. 删除Milvus中的向量
         try {
             milvusService.deleteByDocId(docId);
+            log.info("已删除文档 {} 的向量数据", docId);
         } catch (Exception e) {
             log.warn("删除Milvus向量失败: {}", e.getMessage());
         }
         
-        log.info("文档已删除: docId={}", docId);
+        // 2. 删除数据库中的文本切块
+        try {
+            knowledgeChunkMapper.deleteByDocId(docId);
+            log.info("已删除文档 {} 的切块数据", docId);
+        } catch (Exception e) {
+            log.warn("删除文本切块失败: {}", e.getMessage());
+        }
+        
+        // 3. 删除物理文件
+        try {
+            Path filePath = Paths.get(doc.getFilePath());
+            if (Files.exists(filePath)) {
+                Files.delete(filePath);
+                log.info("已删除物理文件: {}", doc.getFilePath());
+            }
+        } catch (IOException e) {
+            log.warn("删除物理文件失败: {}", e.getMessage());
+        }
+        
+        // 4. 删除数据库记录
+        knowledgeDocMapper.deleteById(docId);
+        
+        log.info("文档已彻底删除: docId={}, title={}", docId, doc.getTitle());
     }
 
     @Override
