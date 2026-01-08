@@ -201,17 +201,35 @@ const handleRegister = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--bg-color);
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.15) 0px, transparent 50%);
   padding: 20px;
 }
 
 .login-box {
   width: 100%;
-  max-width: 420px;
-  background: white;
-  border-radius: 16px;
+  max-width: 440px;
+  background: var(--surface-color-transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--surface-color);
+  border-radius: var(--radius-xl);
   padding: 48px 40px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-xl);
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .login-header {
@@ -221,29 +239,79 @@ const handleRegister = async () => {
 
 .login-title {
   font-size: 32px;
-  font-weight: 700;
-  color: #1a1a1a;
-  margin: 0 0 8px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  font-weight: 800;
+  margin: 0 0 12px;
+  background: var(--gradient-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  letter-spacing: -0.5px;
 }
 
 .login-subtitle {
-  font-size: 14px;
-  color: #666;
+  font-size: 15px;
+  color: var(--text-secondary);
   margin: 0;
+  font-weight: 500;
 }
 
 .login-form {
   margin-top: 24px;
 }
 
+/* Ant Design overrides within scoped style for specific adjustments */
+:deep(.ant-tabs-nav) {
+  margin-bottom: 24px;
+}
+
+:deep(.ant-tabs-tab) {
+  font-size: 16px;
+  padding: 12px 0;
+  transition: color var(--transition-fast);
+}
+
+:deep(.ant-input-affix-wrapper) {
+  padding: 10px 11px;
+  border-radius: var(--radius-md);
+  border-color: var(--border-color);
+  box-shadow: none;
+  transition: all var(--transition-normal);
+}
+
+:deep(.ant-input-affix-wrapper:hover) {
+  border-color: var(--primary-hover);
+}
+
+:deep(.ant-input-affix-wrapper-focused) {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+}
+
+:deep(.ant-btn-primary) {
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: var(--primary-color);
+  border: none;
+  box-shadow: var(--shadow-md);
+  font-weight: 600;
+  font-size: 16px;
+  transition: all var(--transition-normal);
+}
+
+:deep(.ant-btn-primary:hover) {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
+}
+
 @media (max-width: 768px) {
   .login-box {
     padding: 32px 24px;
     max-width: 100%;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+    backdrop-filter: none;
   }
 
   .login-title {
