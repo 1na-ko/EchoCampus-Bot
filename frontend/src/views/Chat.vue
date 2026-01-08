@@ -67,8 +67,8 @@
           </div>
 
           <a-empty
-            v-if="chatStore.conversations.length === 0 && !chatStore.isLoading"
-            :description="isSidebarCollapsed ? '' : '暂无对话记录'"
+            v-if="chatStore.conversations.length === 0 && !chatStore.isLoading && !isSidebarCollapsed"
+            description="暂无对话记录"
             :image="Empty.PRESENTED_IMAGE_SIMPLE"
           />
         </a-spin>
@@ -781,6 +781,131 @@ onUnmounted(() => {
 
 .message-text :deep(p:last-child) {
   margin-bottom: 0;
+}
+
+/* Markdown标题样式 */
+.message-text :deep(h1),
+.message-text :deep(h2),
+.message-text :deep(h3),
+.message-text :deep(h4),
+.message-text :deep(h5),
+.message-text :deep(h6) {
+  margin-top: 1.2em;
+  margin-bottom: 0.6em;
+  padding-left: 0;
+  margin-left: 0;
+  font-weight: 600;
+  line-height: 1.35;
+  color: currentColor; /* 跟随父元素颜色 */
+}
+
+/* 统一左对齐，但通过字号和间距体现层级 */
+.message-text :deep(h1) {
+  font-size: 1.6em; /* 稍微调小，适应对话框 */
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  padding-bottom: 0.3em;
+}
+
+.message-item.user .message-text :deep(h1) {
+  border-bottom-color: rgba(255, 255, 255, 0.2);
+}
+
+.message-text :deep(h2) {
+  font-size: 1.4em;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding-bottom: 0.3em;
+}
+
+.message-item.user .message-text :deep(h2) {
+  border-bottom-color: rgba(255, 255, 255, 0.15);
+}
+
+.message-text :deep(h3) {
+  font-size: 1.25em;
+}
+
+.message-text :deep(h4) {
+  font-size: 1.15em;
+}
+
+.message-text :deep(h5) {
+  font-size: 1.05em;
+  font-weight: bold;
+}
+
+.message-text :deep(h6) {
+  font-size: 1em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.message-item.user .message-text :deep(h6) {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.message-text :deep(h1:first-child),
+.message-text :deep(h2:first-child),
+.message-text :deep(h3:first-child),
+.message-text :deep(h4:first-child),
+.message-text :deep(h5:first-child),
+.message-text :deep(h6:first-child) {
+  margin-top: 0;
+}
+
+/* 列表样式 - 增加一点呼吸感 */
+.message-text :deep(ul),
+.message-text :deep(ol) {
+  margin: 0.8em 0;
+  padding-left: 1.5em; /* 标准缩进 */
+}
+
+.message-text :deep(li) {
+  margin: 0.3em 0;
+}
+
+/* 引用块优化 - 更柔和 */
+.message-text :deep(blockquote) {
+  margin: 1em 0;
+  padding: 0.5em 1em;
+  border-left: 3px solid var(--primary-color);
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 0 4px 4px 0;
+  color: var(--text-secondary);
+}
+
+.message-item.user .message-text :deep(blockquote) {
+  border-left-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* 表格样式支持 */
+.message-text :deep(table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+  font-size: 0.95em;
+}
+
+.message-text :deep(th),
+.message-text :deep(td) {
+  border: 1px solid var(--border-light);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.message-text :deep(th) {
+  background: rgba(0, 0, 0, 0.02);
+  font-weight: 600;
+}
+
+.message-item.user .message-text :deep(th),
+.message-item.user .message-text :deep(td) {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.message-item.user .message-text :deep(th) {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .message-text :deep(pre) {
