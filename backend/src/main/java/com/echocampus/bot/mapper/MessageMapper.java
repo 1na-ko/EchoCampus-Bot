@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 消息Mapper接口
@@ -27,4 +28,9 @@ public interface MessageMapper extends BaseMapper<Message> {
      * 统计会话消息数量
      */
     Integer countByConversationId(@Param("conversationId") Long conversationId);
+
+    /**
+     * 更新消息内容和元数据（处理 JSONB 类型）
+     */
+    int updateContentAndMetadata(@Param("id") Long id, @Param("content") String content, @Param("metadata") Map<String, Object> metadata);
 }

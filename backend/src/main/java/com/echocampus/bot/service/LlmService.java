@@ -3,6 +3,7 @@ package com.echocampus.bot.service;
 import com.echocampus.bot.entity.Message;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * LLM大语言模型服务接口
@@ -52,6 +53,16 @@ public interface LlmService {
      * @return AI回复
      */
     String ragAnswer(String question, String context, List<Message> historyMessages);
+
+    /**
+     * 流式RAG问答（带知识库上下文和历史消息）
+     *
+     * @param question 用户问题
+     * @param context 检索到的知识库上下文
+     * @param historyMessages 历史消息
+     * @param chunkConsumer 内容片段消费者
+     */
+    void ragAnswerStream(String question, String context, List<Message> historyMessages, Consumer<String> chunkConsumer);
 
     /**
      * 检查服务是否可用
