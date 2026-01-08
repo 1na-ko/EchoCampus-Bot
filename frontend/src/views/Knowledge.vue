@@ -373,10 +373,11 @@ const handleUpdateDoc = async () => {
 
 const handleDeleteDoc = (id: number) => {
   Modal.confirm({
-    title: '确认删除',
-    content: '确定要删除这个文档吗？删除后无法恢复。',
-    okText: '删除',
+    title: '确认彻底删除',
+    content: '确定要彻底删除这个文档吗？此操作将删除文档文件、数据库记录和向量数据，删除后无法恢复！',
+    okText: '彻底删除',
     okType: 'danger',
+    cancelText: '取消',
     onOk: async () => {
       await knowledgeStore.deleteDocument(id)
     },
