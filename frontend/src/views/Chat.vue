@@ -96,16 +96,47 @@
             </div>
           </div>
 
+          <!-- 流式响应展示 -->
           <div v-if="chatStore.isSending" class="message-item bot">
             <div class="message-avatar">
               <RobotOutlined />
             </div>
             <div class="message-content">
-              <div class="message-status">
+              <!-- 动态状态显示 -->
+              <div v-if="chatStore.processingStage !== 'generating' || !chatStore.streamingContent" class="message-status">
                 <LoadingOutlined spin />
-                <span>{{ loadingStatus }}</span>
+                <span>{{ currentStatusText }}</span>
               </div>
-              <div class="typing-indicator">
+              
+              <!-- 流式内容显示 -->
+              <div v-if="chatStore.streamingContent" class="message-text streaming" v-html="renderMarkdown(chatStore.streamingContent)"></div>
+              
+              <!-- 知识来源预览（在整个流式过程中保持显示） -->
+              <div v-if="chatStore.streamingSources.length > 0" class="message-sources preview">
+                <a-collapse ghost>
+                  <a-collapse-panel key="1">
+                    <template #header>
+                      <div class="sources-header">
+                        <DatabaseOutlined class="sources-icon" />
+                        <span>知识来源 ({{ chatStore.streamingSources.length }})</span>
+                      </div>
+                    </template>
+                    <div
+                      v-for="(source, idx) in chatStore.streamingSources"
+                      :key="idx"
+                      class="source-item"
+                    >
+                      <div class="source-header">
+                        <span class="source-title">{{ source.title }}</span>
+                      </div>
+                      <div class="source-content">{{ source.content }}</div>
+                    </div>
+                  </a-collapse-panel>
+                </a-collapse>
+              </div>
+              
+              <!-- 打字指示器 -->
+              <div v-if="chatStore.processingStage === 'generating'" class="typing-indicator">
                 <span></span>
                 <span></span>
                 <span></span>
@@ -140,7 +171,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick } from 'vue'
+import { nextTick, computed, watch, h } from 'vue'
 import { Modal, Empty } from 'ant-design-vue'
 import { useChatStore } from '@/stores/chat'
 import { marked } from 'marked'
@@ -169,10 +200,26 @@ const chatStore = useChatStore()
 const currentConvId = ref<number | undefined>()
 const inputMessage = ref('')
 const messagesContainer = ref<HTMLElement>()
-const loadingStatus = ref('正在思考...')
 
-const loadingSteps = ['正在思考...', '检索文档中...', '生成回答...']
-let loadingInterval: NodeJS.Timeout | null = null
+// 根据处理阶段动态计算状态文本
+const currentStatusText = computed(() => {
+  if (chatStore.processingStatus) {
+    return chatStore.processingStatus
+  }
+  
+  switch (chatStore.processingStage) {
+    case 'sending':
+      return '正在发送...'
+    case 'retrieving':
+      return '正在检索相关知识...'
+    case 'generating':
+      return '正在生成回答...'
+    case 'error':
+      return '处理出错'
+    default:
+      return '正在处理...'
+  }
+})
 
 // 配置 marked
 marked.setOptions({
@@ -212,38 +259,27 @@ const handleSendMessage = async (e?: Event) => {
 
   inputMessage.value = ''
   
-  // 开始加载状态轮播
-  startLoadingAnimation()
+  // 使用流式API发送消息
+  await chatStore.sendMessageStream(message, currentConvId.value)
   
-  const response = await chatStore.sendMessage(message, currentConvId.value)
-  
-  // 停止加载状态
-  stopLoadingAnimation()
-  
-  if (response && !currentConvId.value) {
-    currentConvId.value = response.conversationId
+  // 如果是新会话，更新当前会话ID
+  if (!currentConvId.value && chatStore.currentConversation) {
+    currentConvId.value = chatStore.currentConversation.id
   }
 
   await nextTick()
   scrollToBottom()
 }
 
-const startLoadingAnimation = () => {
-  let index = 0
-  loadingStatus.value = loadingSteps[0]
-  loadingInterval = setInterval(() => {
-    index = (index + 1) % loadingSteps.length
-    loadingStatus.value = loadingSteps[index]
-  }, 2000)
-}
+// 监听流式内容变化，自动滚动
+watch(() => chatStore.streamingContent, () => {
+  scrollToBottom()
+})
 
-const stopLoadingAnimation = () => {
-  if (loadingInterval) {
-    clearInterval(loadingInterval)
-    loadingInterval = null
-  }
-  loadingStatus.value = '正在思考...'
-}
+// 监听消息列表变化，自动滚动
+watch(() => chatStore.messages.length, () => {
+  scrollToBottom()
+})
 
 const sendQuickQuestion = (question: string) => {
   inputMessage.value = question
@@ -299,7 +335,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  stopLoadingAnimation()
+  // 取消正在进行的流式请求
+  chatStore.cancelStream()
 })
 </script>
 
@@ -616,6 +653,23 @@ onUnmounted(() => {
   color: #1890ff;
   font-size: 13px;
   margin-bottom: 8px;
+}
+
+.message-text.streaming {
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.message-sources.preview {
+  opacity: 0.9;
 }
 
 .typing-indicator {

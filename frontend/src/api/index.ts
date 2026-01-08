@@ -1,10 +1,11 @@
-import { request } from '@/utils/request'
+import { request, createSSERequest } from '@/utils/request'
 import type {
   LoginRequest,
   LoginResponse,
   User,
   ChatRequest,
   ChatResponse,
+  StreamChatResponse,
   Conversation,
   Message,
   KnowledgeDoc,
@@ -48,6 +49,53 @@ export const chatApi = {
   // 发送消息
   sendMessage(data: ChatRequest) {
     return request.post<ChatResponse>('/v1/chat/message', data)
+  },
+
+  // 发送消息（流式）
+  sendMessageStream(
+    data: ChatRequest,
+    callbacks: {
+      onStatus?: (stage: string, conversationId?: number, messageId?: number) => void
+      onSources?: (sources: any[], conversationId?: number, messageId?: number) => void
+      onContent?: (chunk: string, conversationId?: number, messageId?: number) => void
+      onDone?: (usage: any, responseTimeMs: number, conversationId?: number, messageId?: number) => void
+      onError?: (error: string) => void
+    }
+  ): AbortController {
+    return createSSERequest(
+      '/v1/chat/message/stream',
+      data,
+      (event) => {
+        try {
+          const response: StreamChatResponse = JSON.parse(event.data)
+          // 将 type 转为小写以匹配 TypeScript 类型定义
+          const eventType = response.type?.toLowerCase() as StreamChatResponse['type']
+          
+          switch (eventType) {
+            case 'status':
+              callbacks.onStatus?.(response.stage || '', response.conversationId, response.messageId)
+              break
+            case 'sources':
+              callbacks.onSources?.(response.sources || [], response.conversationId, response.messageId)
+              break
+            case 'content':
+              callbacks.onContent?.(response.content || '', response.conversationId, response.messageId)
+              break
+            case 'done':
+              callbacks.onDone?.(response.usage, response.responseTimeMs || 0, response.conversationId, response.messageId)
+              break
+            case 'error':
+              callbacks.onError?.(response.error || '未知错误')
+              break
+          }
+        } catch (e) {
+          console.error('解析SSE数据失败:', e, event.data)
+        }
+      },
+      (error) => {
+        callbacks.onError?.(error.message)
+      }
+    )
   },
 
   // 获取会话列表

@@ -4,6 +4,7 @@ import com.echocampus.bot.common.ResultCode;
 import com.echocampus.bot.common.exception.BusinessException;
 import com.echocampus.bot.dto.request.ChatRequest;
 import com.echocampus.bot.dto.response.ChatResponse;
+import com.echocampus.bot.dto.response.StreamChatResponse;
 import com.echocampus.bot.entity.Conversation;
 import com.echocampus.bot.entity.Message;
 import com.echocampus.bot.mapper.ConversationMapper;
@@ -17,7 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -103,6 +107,125 @@ public class ChatServiceImpl implements ChatService {
                 .responseTimeMs(responseTime)
                 .createdAt(LocalDateTime.now())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public void sendMessageStream(Long userId, ChatRequest request, Consumer<StreamChatResponse> responseConsumer) {
+        long startTime = System.currentTimeMillis();
+        
+        // 1. 获取或创建会话
+        Conversation conversation;
+        if (request.getConversationId() != null) {
+            conversation = conversationMapper.selectById(request.getConversationId());
+            if (conversation == null) {
+                throw new BusinessException(ResultCode.CONVERSATION_NOT_FOUND);
+            }
+        } else {
+            // 创建新会话，使用问题内容作为标题
+            String title = request.getMessage();
+            if (title.length() > 50) {
+                title = title.substring(0, 50) + "...";
+            }
+            conversation = createConversation(userId, title);
+        }
+        
+        final Long conversationId = conversation.getId();
+
+        // 2. 保存用户消息
+        Message userMessage = new Message();
+        userMessage.setConversationId(conversationId);
+        userMessage.setSenderType("USER");
+        userMessage.setContent(request.getMessage());
+        messageMapper.insert(userMessage);
+        
+        // 3. 创建AI回复消息（先保存空消息，获取ID）
+        Message botMessage = new Message();
+        botMessage.setConversationId(conversationId);
+        botMessage.setParentMessageId(userMessage.getId());
+        botMessage.setSenderType("BOT");
+        botMessage.setContent(""); // 先设为空，后续更新
+        messageMapper.insert(botMessage);
+        
+        final Long messageId = botMessage.getId();
+        
+        // 4. 发送状态：开始处理
+        responseConsumer.accept(StreamChatResponse.status(conversationId, messageId, "正在处理您的问题..."));
+        
+        // 5. 获取历史消息（最近N轮对话，排除刚插入的消息）
+        List<Message> historyMessages = messageMapper.selectByConversationId(conversationId);
+        List<Message> recentMessages = historyMessages.stream()
+                .filter(m -> !m.getId().equals(userMessage.getId()) && !m.getId().equals(messageId))
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .limit(20)
+                .sorted((a, b) -> a.getCreatedAt().compareTo(b.getCreatedAt()))
+                .collect(Collectors.toList());
+        
+        // 6. 用于收集完整回答的StringBuilder和知识来源
+        StringBuilder fullAnswer = new StringBuilder();
+        List<ChatResponse.SourceDoc> allSourceDocs = new ArrayList<>();
+        
+        // 7. 调用RAG流式服务
+        String answer = ragService.answerStream(
+                request.getMessage(),
+                recentMessages,
+                userId,
+                conversationId,
+                // 状态消费者
+                status -> responseConsumer.accept(
+                        StreamChatResponse.status(conversationId, messageId, status)),
+                // 来源消费者
+                sources -> {
+                    List<ChatResponse.SourceDoc> sourceDocs = sources.stream()
+                            .map(s -> ChatResponse.SourceDoc.builder()
+                                    .docId(s.docId())
+                                    .title(s.docTitle())
+                                    .content(s.content())
+                                    .similarity(s.score())
+                                    .build())
+                            .collect(Collectors.toList());
+                    allSourceDocs.addAll(sourceDocs);
+                    responseConsumer.accept(
+                            StreamChatResponse.sources(conversationId, messageId, sourceDocs));
+                },
+                // 内容消费者
+                chunk -> {
+                    fullAnswer.append(chunk);
+                    responseConsumer.accept(
+                            StreamChatResponse.content(conversationId, messageId, chunk));
+                }
+        );
+        
+        // 8. 更新AI消息内容和元数据
+        // 保存 metadata（包括 sources）
+        Map<String, Object> metadata = new HashMap<>();
+        List<Map<String, Object>> sourcesData = allSourceDocs.stream()
+                .map(source -> {
+                    Map<String, Object> sourceMap = new HashMap<>();
+                    sourceMap.put("docId", source.getDocId());
+                    sourceMap.put("title", source.getTitle());
+                    sourceMap.put("content", source.getContent());
+                    sourceMap.put("similarity", source.getSimilarity());
+                    return sourceMap;
+                })
+                .collect(Collectors.toList());
+        metadata.put("sources", sourcesData);
+        
+        // 使用自定义方法更新，处理 JSONB 类型
+        messageMapper.updateContentAndMetadata(botMessage.getId(), fullAnswer.toString(), metadata);
+        
+        // 9. 发送完成事件
+        long responseTime = System.currentTimeMillis() - startTime;
+        responseConsumer.accept(StreamChatResponse.done(
+                conversationId,
+                messageId,
+                ChatResponse.TokenUsage.builder()
+                        .promptTokens(0)
+                        .completionTokens(0)
+                        .totalTokens(0)
+                        .build(),
+                responseTime
+        ));
     }
 
     @Override

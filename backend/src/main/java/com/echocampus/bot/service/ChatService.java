@@ -2,10 +2,12 @@ package com.echocampus.bot.service;
 
 import com.echocampus.bot.dto.request.ChatRequest;
 import com.echocampus.bot.dto.response.ChatResponse;
+import com.echocampus.bot.dto.response.StreamChatResponse;
 import com.echocampus.bot.entity.Conversation;
 import com.echocampus.bot.entity.Message;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * 聊天服务接口
@@ -19,6 +21,14 @@ public interface ChatService {
      * @return 聊天响应
      */
     ChatResponse sendMessage(Long userId, ChatRequest request);
+
+    /**
+     * 发送消息并获取流式AI回复
+     * @param userId 用户ID
+     * @param request 聊天请求
+     * @param responseConsumer 流式响应消费者
+     */
+    void sendMessageStream(Long userId, ChatRequest request, Consumer<StreamChatResponse> responseConsumer);
 
     /**
      * 获取用户的会话列表
