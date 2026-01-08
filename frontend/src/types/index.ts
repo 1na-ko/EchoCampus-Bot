@@ -97,6 +97,21 @@ export interface ChatResponse {
   createdAt: string
 }
 
+// 流式聊天响应类型
+export type StreamEventType = 'status' | 'sources' | 'content' | 'done' | 'error'
+
+export interface StreamChatResponse {
+  type: StreamEventType
+  conversationId?: number
+  messageId?: number
+  content?: string
+  stage?: string
+  sources?: SourceDoc[]
+  usage?: TokenUsage
+  responseTimeMs?: number
+  error?: string
+}
+
 // 知识库相关类型
 export interface KnowledgeDoc {
   id: number

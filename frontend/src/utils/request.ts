@@ -118,4 +118,90 @@ export const request = {
   },
 }
 
+/**
+ * 创建SSE流式请求
+ * @param url API URL
+ * @param data 请求数据
+ * @param onMessage 消息回调
+ * @param onError 错误回调
+ * @returns AbortController 用于取消请求
+ */
+export function createSSERequest(
+  url: string,
+  data: any,
+  onMessage: (event: MessageEvent) => void,
+  onError?: (error: Error) => void
+): AbortController {
+  const controller = new AbortController()
+  
+  const token = localStorage.getItem('token')
+  const userId = localStorage.getItem('userId')
+  
+  fetch(`/api${url}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'text/event-stream',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      ...(userId ? { 'X-User-Id': userId } : {}),
+    },
+    body: JSON.stringify(data),
+    signal: controller.signal,
+  })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const reader = response.body?.getReader()
+      if (!reader) {
+        throw new Error('Response body is not readable')
+      }
+      
+      const decoder = new TextDecoder()
+      let buffer = ''
+      
+      const processChunk = async () => {
+        try {
+          while (true) {
+            const { done, value } = await reader.read()
+            
+            if (done) {
+              break
+            }
+            
+            buffer += decoder.decode(value, { stream: true })
+            
+            // 解析SSE格式的数据
+            const lines = buffer.split('\n')
+            buffer = lines.pop() || '' // 保留不完整的行
+            
+            for (const line of lines) {
+              if (line.startsWith('data:')) {
+                const data = line.slice(5).trim()
+                if (data) {
+                  const event = new MessageEvent('message', { data })
+                  onMessage(event)
+                }
+              }
+            }
+          }
+        } catch (error) {
+          if ((error as Error).name !== 'AbortError') {
+            onError?.(error as Error)
+          }
+        }
+      }
+      
+      processChunk()
+    })
+    .catch(error => {
+      if (error.name !== 'AbortError') {
+        onError?.(error)
+      }
+    })
+  
+  return controller
+}
+
 export default service
