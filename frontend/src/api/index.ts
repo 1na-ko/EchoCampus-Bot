@@ -50,21 +50,6 @@ export const chatApi = {
     return request.post<ChatResponse>('/v1/chat/message', data)
   },
 
-  // 发送消息（流式）
-  sendMessageStream(message: string, conversationId?: number) {
-    const params = new URLSearchParams()
-    params.append('message', message)
-    if (conversationId) {
-      params.append('conversationId', conversationId.toString())
-    }
-    
-    const url = `/api/v1/chat/message/stream?${params.toString()}`
-    
-    return new EventSource(url, {
-      withCredentials: false,
-    })
-  },
-
   // 获取会话列表
   getConversations(page = 1, size = 10) {
     return request.get<Conversation[]>('/v1/chat/conversations', {

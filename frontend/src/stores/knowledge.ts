@@ -109,7 +109,7 @@ export const useKnowledgeStore = defineStore('knowledge', {
         if (this.currentDoc?.id === docId) {
           this.currentDoc = null
         }
-        message.success('文档已删除')
+        message.success('文档已彻底删除')
         return true
       } catch (error) {
         console.error('Delete document error:', error)

@@ -10,12 +10,9 @@ import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.StringReader;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 /**
  * DeepSeek LLM服务实现
@@ -188,135 +185,6 @@ public class LlmServiceImpl implements LlmService {
         
         // 4. 调用LLM
         return chat(messages);
-    }
-
-    @Override
-    public String ragAnswerStream(String question, String context, List<Message> historyMessages, Consumer<String> onChunk) {
-        // 构建消息列表
-        List<ChatMessage> messages = new ArrayList<>();
-        
-        // 1. 添加系统提示词（包含知识库上下文）
-        if (context != null && !context.trim().isEmpty()) {
-            String systemPrompt = String.format(RAG_SYSTEM_PROMPT, context);
-            messages.add(ChatMessage.system(systemPrompt));
-        } else {
-            messages.add(ChatMessage.system("你是EchoCampus智能校园问答助手。当前知识库中没有找到与该问题相关的内容，请告知用户。"));
-        }
-        
-        // 2. 添加历史消息
-        if (historyMessages != null && !historyMessages.isEmpty()) {
-            historyMessages.stream()
-                    .limit(20)
-                    .forEach(msg -> {
-                        if ("USER".equals(msg.getSenderType())) {
-                            messages.add(ChatMessage.user(msg.getContent()));
-                        } else if ("BOT".equals(msg.getSenderType())) {
-                            messages.add(ChatMessage.assistant(msg.getContent()));
-                        }
-                    });
-        }
-        
-        // 3. 添加当前问题
-        messages.add(ChatMessage.user(question));
-        
-        // 4. 调用LLM（流式）
-        return chatStream(messages, onChunk);
-    }
-
-    /**
-     * 流式聊天
-     */
-    private String chatStream(List<ChatMessage> messages, Consumer<String> onChunk) {
-        AiConfig.LlmConfig config = aiConfig.getLlm();
-        StringBuilder fullContent = new StringBuilder();
-        
-        try {
-            // 构建请求体
-            List<Map<String, String>> messageList = new ArrayList<>();
-            for (ChatMessage msg : messages) {
-                Map<String, String> msgMap = new HashMap<>();
-                msgMap.put("role", msg.role());
-                msgMap.put("content", msg.content());
-                messageList.add(msgMap);
-            }
-            
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", config.getModel());
-            requestBody.put("messages", messageList);
-            requestBody.put("max_tokens", config.getMaxTokens());
-            requestBody.put("temperature", config.getTemperature());
-            requestBody.put("stream", true); // 启用流式输出
-            
-            String jsonBody = objectMapper.writeValueAsString(requestBody);
-            
-            log.debug("LLM流式请求: model={}, messages={}", config.getModel(), messages.size());
-            
-            Request request = new Request.Builder()
-                    .url(config.getApiUrl())
-                    .addHeader("Authorization", "Bearer " + config.getApiKey())
-                    .addHeader("Content-Type", "application/json")
-                    .post(RequestBody.create(jsonBody, MediaType.parse("application/json")))
-                    .build();
-
-            try (Response response = getHttpClient().newCall(request).execute()) {
-                if (!response.isSuccessful()) {
-                    String errorBody = response.body() != null ? response.body().string() : "无响应体";
-                    log.error("LLM API请求失败: code={}, body={}", response.code(), errorBody);
-                    String errorMsg = "抱歉，AI服务暂时不可用，请稍后再试。";
-                    if (onChunk != null) onChunk.accept(errorMsg);
-                    return errorMsg;
-                }
-
-                // 读取SSE流（真正的流式读取）
-                if (response.body() != null) {
-                    BufferedReader reader = new BufferedReader(
-                        new java.io.InputStreamReader(response.body().byteStream(), java.nio.charset.StandardCharsets.UTF_8)
-                    );
-                    String line;
-                    
-                    while ((line = reader.readLine()) != null) {
-                        if (line.startsWith("data: ")) {
-                            String data = line.substring(6).trim();
-                            
-                            // 结束信号
-                            if ("[DONE]".equals(data)) {
-                                break;
-                            }
-                            
-                            try {
-                                JsonNode root = objectMapper.readTree(data);
-                                JsonNode choices = root.get("choices");
-                                
-                                if (choices != null && choices.isArray() && choices.size() > 0) {
-                                    JsonNode delta = choices.get(0).get("delta");
-                                    if (delta != null && delta.has("content")) {
-                                        String chunk = delta.get("content").asText();
-                                        fullContent.append(chunk);
-                                        
-                                        // 回调发送每个块
-                                        if (onChunk != null) {
-                                            onChunk.accept(chunk);
-                                        }
-                                    }
-                                }
-                            } catch (Exception e) {
-                                log.warn("解析SSE数据失败: {}", data);
-                            }
-                        }
-                    }
-                }
-                
-                String result = fullContent.toString();
-                log.debug("LLM流式响应完成: 长度={}", result.length());
-                return result;
-            }
-            
-        } catch (IOException e) {
-            log.error("LLM API流式请求异常: {}", e.getMessage(), e);
-            String errorMsg = "抱歉，AI服务请求失败: " + e.getMessage();
-            if (onChunk != null) onChunk.accept(errorMsg);
-            return errorMsg;
-        }
     }
 
     @Override

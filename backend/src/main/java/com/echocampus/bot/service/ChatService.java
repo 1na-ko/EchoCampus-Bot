@@ -4,7 +4,6 @@ import com.echocampus.bot.dto.request.ChatRequest;
 import com.echocampus.bot.dto.response.ChatResponse;
 import com.echocampus.bot.entity.Conversation;
 import com.echocampus.bot.entity.Message;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
@@ -20,14 +19,6 @@ public interface ChatService {
      * @return 聊天响应
      */
     ChatResponse sendMessage(Long userId, ChatRequest request);
-
-    /**
-     * 发送消息并以SSE流式方式获取AI回复
-     * @param userId 用户ID
-     * @param request 聊天请求
-     * @return SSE Emitter
-     */
-    SseEmitter sendMessageStream(Long userId, ChatRequest request);
 
     /**
      * 获取用户的会话列表
