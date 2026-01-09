@@ -3,16 +3,21 @@ package com.echocampus.bot.controller;
 import com.echocampus.bot.common.PageResult;
 import com.echocampus.bot.common.Result;
 import com.echocampus.bot.dto.request.KnowledgeDocRequest;
+import com.echocampus.bot.dto.response.DocumentProgressDTO;
 import com.echocampus.bot.entity.KnowledgeCategory;
 import com.echocampus.bot.entity.KnowledgeDoc;
+import com.echocampus.bot.service.DocumentProgressService;
 import com.echocampus.bot.service.KnowledgeService;
+import com.echocampus.bot.service.impl.DocumentProgressServiceImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
@@ -26,6 +31,7 @@ import java.util.List;
 public class KnowledgeController {
 
     private final KnowledgeService knowledgeService;
+    private final DocumentProgressServiceImpl documentProgressService;
 
     @Operation(summary = "上传文档", description = "上传知识库文档")
     @PostMapping("/docs")
@@ -97,5 +103,51 @@ public class KnowledgeController {
     public Result<List<KnowledgeCategory>> getCategories() {
         List<KnowledgeCategory> categories = knowledgeService.getCategories();
         return Result.success(categories);
+    }
+
+    @Operation(summary = "订阅文档处理进度", description = "通过SSE订阅文档处理的实时进度")
+    @GetMapping(value = "/docs/{docId}/progress", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter subscribeProgress(
+            @Parameter(description = "文档ID") @PathVariable Long docId) {
+        return documentProgressService.registerEmitter(docId);
+    }
+
+    @Operation(summary = "获取当前进度", description = "获取文档处理的当前进度状态")
+    @GetMapping("/docs/{docId}/progress/current")
+    public Result<DocumentProgressDTO> getCurrentProgress(
+            @Parameter(description = "文档ID") @PathVariable Long docId) {
+        DocumentProgressDTO progress = documentProgressService.getProgress(docId);
+        if (progress == null) {
+            // 如果没有缓存的进度，查询文档状态
+            KnowledgeDoc doc = knowledgeService.getDocumentById(docId);
+            if ("COMPLETED".equals(doc.getProcessStatus())) {
+                progress = DocumentProgressDTO.completed(docId, doc.getVectorCount() != null ? doc.getVectorCount() : 0);
+            } else if ("FAILED".equals(doc.getProcessStatus())) {
+                progress = DocumentProgressDTO.failed(docId, "UNKNOWN", doc.getProcessMessage());
+            } else if ("PROCESSING".equals(doc.getProcessStatus())) {
+                progress = DocumentProgressDTO.builder()
+                        .docId(docId)
+                        .stage("PROCESSING")
+                        .stageName("处理中")
+                        .progress(0)
+                        .totalProgress(0)
+                        .message("正在处理中...")
+                        .completed(false)
+                        .failed(false)
+                        .build();
+            } else {
+                progress = DocumentProgressDTO.builder()
+                        .docId(docId)
+                        .stage("PENDING")
+                        .stageName("等待处理")
+                        .progress(0)
+                        .totalProgress(0)
+                        .message("等待处理...")
+                        .completed(false)
+                        .failed(false)
+                        .build();
+            }
+        }
+        return Result.success(progress);
     }
 }

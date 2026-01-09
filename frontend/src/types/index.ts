@@ -154,3 +154,28 @@ export interface KnowledgeDocRequest {
 export interface UploadDocRequest extends KnowledgeDocRequest {
   file: File
 }
+
+// 文档处理进度类型
+export type DocumentProcessStage = 
+  | 'UPLOADING'   // 文件上传中
+  | 'PARSING'     // 文档解析中
+  | 'CHUNKING'    // 文本切块中
+  | 'EMBEDDING'   // 向量化处理中
+  | 'STORING'     // 数据存储中
+  | 'COMPLETED'   // 处理完成
+  | 'FAILED'      // 处理失败
+  | 'PENDING'     // 等待处理
+  | 'PROCESSING'  // 处理中
+
+export interface DocumentProgress {
+  docId: number
+  stage: DocumentProcessStage
+  stageName: string
+  progress: number       // 当前阶段进度 (0-100)
+  totalProgress: number  // 总体进度 (0-100)
+  message: string
+  details?: string
+  completed: boolean
+  failed: boolean
+  errorMessage?: string
+}
