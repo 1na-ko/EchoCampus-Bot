@@ -192,7 +192,7 @@
                   :before-upload="beforeUpload"
                   :max-count="1"
                   :disabled="showProgress"
-                  accept=".pdf,.txt,.md,.docx,.doc,.ppt,.pptx"
+                  accept=".pdf,.txt,.md,.markdown,.docx,.doc,.pptx,.ppt,.xlsx,.xls"
                   list-type="text"
                   class="elegant-upload-clean"
                >
@@ -200,7 +200,7 @@
                     <a-button :disabled="showProgress" class="upload-trigger-btn">
                        <UploadOutlined /> 选择文件
                     </a-button>
-                    <span class="upload-hint">支持 PDF, Markdown, Word, PPT (Max 50MB)</span>
+                    <span class="upload-hint">支持 PDF, Markdown, Word, PPT, Excel 等文档格式（最大 50MB）</span>
                   </div>
                </a-upload>
           </a-form-item>
@@ -231,6 +231,7 @@
           ref="uploadProgressRef"
           :doc-id="uploadingDocId"
           :visible="showProgress"
+          :show-header-close="false"
           @close="handleProgressClose"
           @completed="handleUploadCompleted"
           @failed="handleUploadFailed"
@@ -249,7 +250,7 @@
       title="索引重建进度"
       :footer="null"
       width="500px"
-      :closable="reindexCompleted || reindexFailed"
+      :closable="false"
       :maskClosable="reindexCompleted || reindexFailed"
       wrapClassName="elegant-modal-wrap"
       :bodyStyle="{ padding: '0' }"
@@ -261,6 +262,7 @@
             ref="reindexProgressRef"
             :doc-id="reindexingDocId"
             :visible="showReindexProgress"
+            :show-header-close="false"
             @close="handleReindexClose"
             @completed="handleReindexCompleted"
             @failed="handleReindexFailed"
@@ -332,6 +334,7 @@ import {
   FileMarkdownOutlined,
   FileTextOutlined,
   FilePptOutlined,
+  FileExcelOutlined,
   SearchOutlined,
   CloudUploadOutlined,
   CheckCircleFilled,
@@ -662,6 +665,7 @@ const getFileIcon = (fileType: string) => {
   if (type.includes('md') || type.includes('markdown')) return FileMarkdownOutlined
   if (type.includes('txt')) return FileTextOutlined
   if (type.includes('ppt')) return FilePptOutlined
+  if (type.includes('xls') || type.includes('excel')) return FileExcelOutlined
   return FileOutlined
 }
 
@@ -672,6 +676,7 @@ const getFileIconColor = (fileType: string) => {
   if (type.includes('md') || type.includes('markdown')) return '#333'
   if (type.includes('txt')) return '#666'
   if (type.includes('ppt')) return '#fa8c16'
+  if (type.includes('xls') || type.includes('excel')) return '#52c41a'
   return 'var(--primary-color)'
 }
 

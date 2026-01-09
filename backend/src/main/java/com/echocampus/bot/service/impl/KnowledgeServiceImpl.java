@@ -48,7 +48,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     @Value("${document.upload-path:./uploads}")
     private String uploadPath;
 
-    @Value("${document.allowed-types:pdf,txt,md,docx,doc,ppt,pptx}")
+    @Value("${document.allowed-types:pdf,txt,md,markdown,docx,doc,pptx,ppt,xlsx,xls}")
     private String allowedTypes;
 
     @Override

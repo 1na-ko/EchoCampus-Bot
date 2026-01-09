@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -103,6 +103,6 @@ public class DocxDocumentParser implements DocumentParser {
 
     @Override
     public List<String> getSupportedTypes() {
-        return Arrays.asList("docx", "doc");
+        return Collections.singletonList("docx");
     }
 }

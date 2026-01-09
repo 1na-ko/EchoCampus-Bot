@@ -8,7 +8,7 @@
         <span>{{ progressTitle }}</span>
       </div>
       <a-button 
-        v-if="isCompleted || isFailed" 
+        v-if="(isCompleted || isFailed) && props.showHeaderClose" 
         type="text" 
         size="small" 
         @click="handleClose"
@@ -96,10 +96,13 @@ import {
 import { knowledgeApi } from '@/api'
 import type { DocumentProgress, DocumentProcessStage } from '@/types'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   docId?: number
   visible: boolean
-}>()
+  showHeaderClose?: boolean
+}>(), {
+  showHeaderClose: true
+})
 
 const emit = defineEmits<{
   (e: 'close'): void
