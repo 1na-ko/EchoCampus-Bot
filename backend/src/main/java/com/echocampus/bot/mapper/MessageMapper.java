@@ -33,4 +33,9 @@ public interface MessageMapper extends BaseMapper<Message> {
      * 更新消息内容和元数据（处理 JSONB 类型）
      */
     int updateContentAndMetadata(@Param("id") Long id, @Param("content") String content, @Param("metadata") Map<String, Object> metadata);
+
+    /**
+     * 批量物理删除指定会话的消息
+     */
+    int physicalDeleteByConversationIds(@Param("conversationIds") List<Long> conversationIds);
 }
