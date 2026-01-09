@@ -118,33 +118,73 @@ public class RagServiceImpl implements RagService {
     }
 
     /**
-     * 构建上下文
+     * 构建上下文（包含文档元信息）
      */
     private String buildContext(List<KnowledgeChunk> chunks) {
         if (chunks.isEmpty()) {
             return "";
         }
 
+        // 批量查询所有涉及的文档信息
+        Set<Long> docIds = chunks.stream()
+                .map(KnowledgeChunk::getDocId)
+                .collect(Collectors.toSet());
+        
+        Map<Long, KnowledgeDoc> docMap = new HashMap<>();
+        if (!docIds.isEmpty()) {
+            List<KnowledgeDoc> docs = docMapper.selectBatchIds(docIds);
+            docMap = docs.stream()
+                    .collect(Collectors.toMap(KnowledgeDoc::getId, doc -> doc));
+        }
+
         StringBuilder context = new StringBuilder();
         int totalLength = 0;
+        Long lastDocId = null;
 
         for (int i = 0; i < chunks.size(); i++) {
             KnowledgeChunk chunk = chunks.get(i);
+            KnowledgeDoc doc = docMap.get(chunk.getDocId());
+            
+            // 构建片段头部（包含文档元信息）
+            StringBuilder chunkHeader = new StringBuilder();
+            chunkHeader.append(String.format("[片段%d]", i + 1));
+            
+            // 只在文档切换时显示文档信息，避免重复
+            if (doc != null && !chunk.getDocId().equals(lastDocId)) {
+                chunkHeader.append(String.format(" 【文档：%s", doc.getTitle()));
+                
+                if (doc.getCategory() != null && !doc.getCategory().isEmpty()) {
+                    chunkHeader.append(String.format(" | 分类：%s", doc.getCategory()));
+                }
+                
+                if (chunk.getPageNumber() != null && chunk.getPageNumber() > 0) {
+                    chunkHeader.append(String.format(" | 第%d页", chunk.getPageNumber()));
+                }
+                
+                chunkHeader.append("】");
+                lastDocId = chunk.getDocId();
+            }
+            
+            chunkHeader.append("\n");
             String content = chunk.getContent();
+            String fullChunk = chunkHeader.toString() + content;
             
             // 检查是否超过最大上下文长度
-            if (totalLength + content.length() > maxContextLength) {
+            if (totalLength + fullChunk.length() > maxContextLength) {
                 // 截断
                 int remaining = maxContextLength - totalLength;
-                if (remaining > 100) {
-                    content = content.substring(0, remaining) + "...";
-                    context.append(String.format("[%d] %s\n\n", i + 1, content));
+                if (remaining > 150) { // 需要更多空间来容纳头部信息
+                    int contentLength = remaining - chunkHeader.length() - 3; // 3为"..."的长度
+                    if (contentLength > 50) {
+                        content = content.substring(0, contentLength) + "...";
+                        context.append(chunkHeader).append(content).append("\n\n");
+                    }
                 }
                 break;
             }
             
-            context.append(String.format("[%d] %s\n\n", i + 1, content));
-            totalLength += content.length();
+            context.append(fullChunk).append("\n\n");
+            totalLength += fullChunk.length();
         }
 
         return context.toString().trim();
