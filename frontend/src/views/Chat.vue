@@ -263,6 +263,17 @@ const currentConvId = ref<number | undefined>()
 const inputMessage = ref('')
 const messagesContainer = ref<HTMLElement>()
 
+// 监听 store 中 currentConversation 的变化，同步更新本地 currentConvId
+// 这是解决新对话创建后第二次提问产生新对话问题的关键
+watch(
+  () => chatStore.currentConversation?.id,
+  (newId) => {
+    if (newId && newId !== currentConvId.value) {
+      currentConvId.value = newId
+    }
+  }
+)
+
 // Input fancy effects
 const isInputFocused = ref(false)
 const inputWrapperRef = ref<HTMLElement>()
