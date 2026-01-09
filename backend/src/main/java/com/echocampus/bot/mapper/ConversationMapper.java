@@ -7,6 +7,7 @@ import com.echocampus.bot.entity.Conversation;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -24,4 +25,14 @@ public interface ConversationMapper extends BaseMapper<Conversation> {
      * 查询用户最近的会话
      */
     List<Conversation> selectRecentByUserId(@Param("userId") Long userId, @Param("limit") Integer limit);
+
+    /**
+     * 查询指定日期之前的软删除会话ID列表
+     */
+    List<Long> selectDeletedConversationIdsBefore(@Param("beforeDate") LocalDateTime beforeDate);
+
+    /**
+     * 批量物理删除会话
+     */
+    int physicalDeleteByIds(@Param("ids") List<Long> ids);
 }
