@@ -12,6 +12,7 @@ import type {
   KnowledgeCategory,
   KnowledgeDocRequest,
   PageResult,
+  DocumentProgress,
 } from '@/types'
 
 // ==================== 用户认证 API ====================
@@ -178,5 +179,50 @@ export const knowledgeApi = {
   // 获取分类列表
   getCategories() {
     return request.get<KnowledgeCategory[]>('/v1/knowledge/categories')
+  },
+
+  // 获取当前进度
+  getCurrentProgress(docId: number) {
+    return request.get<DocumentProgress>(`/v1/knowledge/docs/${docId}/progress/current`)
+  },
+
+  // 订阅文档处理进度 (SSE)
+  subscribeProgress(
+    docId: number,
+    callbacks: {
+      onProgress?: (progress: DocumentProgress) => void
+      onError?: (error: string) => void
+      onComplete?: () => void
+    }
+  ): EventSource {
+    const token = localStorage.getItem('token')
+    const userId = localStorage.getItem('userId')
+    
+    const url = new URL(`/api/v1/knowledge/docs/${docId}/progress`, window.location.origin)
+    
+    const eventSource = new EventSource(url.toString())
+    
+    eventSource.addEventListener('progress', (event: MessageEvent) => {
+      try {
+        const progress: DocumentProgress = JSON.parse(event.data)
+        callbacks.onProgress?.(progress)
+        
+        // 如果完成或失败，关闭连接
+        if (progress.completed || progress.failed) {
+          eventSource.close()
+          callbacks.onComplete?.()
+        }
+      } catch (e) {
+        console.error('解析进度数据失败:', e, event.data)
+      }
+    })
+    
+    eventSource.onerror = (error) => {
+      console.error('SSE连接错误:', error)
+      callbacks.onError?.('连接错误')
+      eventSource.close()
+    }
+    
+    return eventSource
   },
 }
