@@ -131,8 +131,13 @@
       v-model:open="showUploadModal"
       title="上传知识库文档"
       :confirm-loading="uploading"
+      :ok-button-props="{ disabled: showProgress }"
+      :cancel-button-props="{ disabled: showProgress && !progressCompleted }"
       @ok="handleUpload"
-      width="600px"
+      @cancel="handleUploadModalClose"
+      width="650px"
+      :maskClosable="!showProgress"
+      :closable="!showProgress || progressCompleted || progressFailed"
     >
       <a-form :model="uploadForm" layout="vertical">
         <a-form-item label="文件" required>
@@ -140,9 +145,10 @@
             v-model:file-list="fileList"
             :before-upload="beforeUpload"
             :max-count="1"
+            :disabled="showProgress"
             accept=".pdf,.txt,.md,.docx,.doc,.ppt,.pptx"
           >
-            <a-button>
+            <a-button :disabled="showProgress">
               <UploadOutlined /> 选择文件
             </a-button>
             <div style="margin-top: 8px; color: #999; font-size: 12px">
@@ -152,7 +158,11 @@
         </a-form-item>
 
         <a-form-item label="文档标题" required>
-          <a-input v-model:value="uploadForm.title" placeholder="请输入文档标题" />
+          <a-input 
+            v-model:value="uploadForm.title" 
+            placeholder="请输入文档标题"
+            :disabled="showProgress"
+          />
         </a-form-item>
 
         <a-form-item label="文档描述">
@@ -160,6 +170,7 @@
             v-model:value="uploadForm.description"
             :rows="3"
             placeholder="请输入文档描述（可选）"
+            :disabled="showProgress"
           />
         </a-form-item>
 
@@ -168,6 +179,7 @@
             v-model:value="uploadForm.category"
             placeholder="选择分类（可选）"
             allowClear
+            :disabled="showProgress"
           >
             <a-select-option
               v-for="cat in knowledgeStore.categories"
@@ -183,9 +195,20 @@
           <a-input
             v-model:value="uploadForm.tags"
             placeholder="多个标签用逗号分隔（可选）"
+            :disabled="showProgress"
           />
         </a-form-item>
       </a-form>
+
+      <!-- 进度显示组件 -->
+      <UploadProgress
+        ref="uploadProgressRef"
+        :doc-id="uploadingDocId"
+        :visible="showProgress"
+        @close="handleProgressClose"
+        @completed="handleUploadCompleted"
+        @failed="handleUploadFailed"
+      />
     </a-modal>
 
     <!-- 编辑文档弹窗 -->
@@ -283,6 +306,7 @@ import {
   DeleteOutlined,
   ReloadOutlined,
 } from '@ant-design/icons-vue'
+import UploadProgress from '@/components/UploadProgress.vue'
 
 const knowledgeStore = useKnowledgeStore()
 
@@ -296,6 +320,13 @@ const uploading = ref(false)
 const fileList = ref<any[]>([])
 const currentDoc = ref<KnowledgeDoc | null>(null)
 const currentEditId = ref<number>()
+
+// 进度相关状态
+const uploadProgressRef = ref<InstanceType<typeof UploadProgress> | null>(null)
+const uploadingDocId = ref<number | undefined>(undefined)
+const showProgress = ref(false)
+const progressCompleted = ref(false)
+const progressFailed = ref(false)
 
 const uploadForm = reactive<KnowledgeDocRequest>({
   title: '',
@@ -331,20 +362,87 @@ const handleUpload = async () => {
   }
 
   uploading.value = true
+  progressCompleted.value = false
+  progressFailed.value = false
+  
   try {
     const file = fileList.value[0].originFileObj || fileList.value[0]
-    await knowledgeStore.uploadDocument(file, uploadForm)
+    const doc = await knowledgeStore.uploadDocument(file, uploadForm)
     
-    showUploadModal.value = false
-    fileList.value = []
-    Object.assign(uploadForm, {
-      title: '',
-      description: '',
-      category: '',
-      tags: '',
-    })
+    if (doc) {
+      // 上传成功，显示进度
+      uploadingDocId.value = doc.id
+      showProgress.value = true
+      
+      // 订阅进度（组件会自动处理）
+      if (uploadProgressRef.value) {
+        uploadProgressRef.value.subscribeProgress(doc.id)
+      }
+    }
+  } catch (error) {
+    message.error('上传失败')
+    progressFailed.value = true
   } finally {
     uploading.value = false
+  }
+}
+
+// 进度完成处理
+const handleUploadCompleted = (docId: number) => {
+  progressCompleted.value = true
+  message.success('文档处理完成！')
+  // 刷新文档列表
+  fetchDocuments()
+}
+
+// 进度失败处理
+const handleUploadFailed = (docId: number, error: string) => {
+  progressFailed.value = true
+  message.error(`文档处理失败: ${error}`)
+  // 刷新文档列表
+  fetchDocuments()
+}
+
+// 进度关闭处理
+const handleProgressClose = () => {
+  showProgress.value = false
+  uploadingDocId.value = undefined
+  progressCompleted.value = false
+  progressFailed.value = false
+}
+
+// 上传弹窗关闭处理
+const handleUploadModalClose = () => {
+  if (showProgress.value && !progressCompleted.value && !progressFailed.value) {
+    // 如果正在处理中，提示用户
+    Modal.confirm({
+      title: '确认关闭',
+      content: '文档正在处理中，关闭窗口不会中断处理，但您将无法查看进度。确定要关闭吗？',
+      onOk: () => {
+        resetUploadState()
+        showUploadModal.value = false
+      },
+    })
+    return
+  }
+  resetUploadState()
+}
+
+// 重置上传状态
+const resetUploadState = () => {
+  fileList.value = []
+  Object.assign(uploadForm, {
+    title: '',
+    description: '',
+    category: '',
+    tags: '',
+  })
+  showProgress.value = false
+  uploadingDocId.value = undefined
+  progressCompleted.value = false
+  progressFailed.value = false
+  if (uploadProgressRef.value) {
+    uploadProgressRef.value.reset()
   }
 }
 

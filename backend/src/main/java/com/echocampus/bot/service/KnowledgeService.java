@@ -64,10 +64,4 @@ public interface KnowledgeService {
      * @return 分类列表
      */
     List<KnowledgeCategory> getCategories();
-
-    /**
-     * 处理文档（解析、切块、向量化）
-     * @param docId 文档ID
-     */
-    void processDocument(Long docId);
 }

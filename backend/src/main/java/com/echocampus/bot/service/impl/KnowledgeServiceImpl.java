@@ -7,19 +7,16 @@ import com.echocampus.bot.common.ResultCode;
 import com.echocampus.bot.common.exception.BusinessException;
 import com.echocampus.bot.dto.request.KnowledgeDocRequest;
 import com.echocampus.bot.entity.KnowledgeCategory;
-import com.echocampus.bot.entity.KnowledgeChunk;
 import com.echocampus.bot.entity.KnowledgeDoc;
 import com.echocampus.bot.mapper.KnowledgeCategoryMapper;
 import com.echocampus.bot.mapper.KnowledgeChunkMapper;
 import com.echocampus.bot.mapper.KnowledgeDocMapper;
-import com.echocampus.bot.parser.DocumentParser;
-import com.echocampus.bot.parser.DocumentParserFactory;
-import com.echocampus.bot.parser.exception.DocumentParseException;
-import com.echocampus.bot.service.*;
+import com.echocampus.bot.service.DocumentProcessService;
+import com.echocampus.bot.service.KnowledgeService;
+import com.echocampus.bot.service.MilvusService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,10 +25,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
+
 
 /**
  * 知识库服务实现类
@@ -44,10 +40,8 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     private final KnowledgeDocMapper knowledgeDocMapper;
     private final KnowledgeCategoryMapper knowledgeCategoryMapper;
     private final KnowledgeChunkMapper knowledgeChunkMapper;
-    private final DocumentParserFactory parserFactory;
-    private final TextChunkService textChunkService;
-    private final EmbeddingService embeddingService;
     private final MilvusService milvusService;
+    private final DocumentProcessService documentProcessService;
 
     @Value("${document.upload-path:./uploads}")
     private String uploadPath;
@@ -95,8 +89,8 @@ public class KnowledgeServiceImpl implements KnowledgeService {
             
             knowledgeDocMapper.insert(doc);
             
-            // 4. 异步处理文档
-            processDocument(doc.getId());
+            // 4. 异步处理文档（通过独立服务调用，确保@Async生效）
+            documentProcessService.processDocumentAsync(doc.getId());
             
             log.info("文档上传成功: docId={}, title={}", doc.getId(), doc.getTitle());
             return doc;
@@ -189,92 +183,13 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         doc.setProcessStatus("PENDING");
         knowledgeDocMapper.updateById(doc);
         
-        // 异步重新处理
-        processDocument(docId);
+        // 异步重新处理（通过独立服务调用，确保@Async生效）
+        documentProcessService.processDocumentAsync(docId);
     }
 
     @Override
     public List<KnowledgeCategory> getCategories() {
         return knowledgeCategoryMapper.selectTopLevel();
-    }
-
-    @Override
-    @Async
-    public void processDocument(Long docId) {
-        log.info("开始处理文档: docId={}", docId);
-        
-        try {
-            KnowledgeDoc doc = knowledgeDocMapper.selectById(docId);
-            if (doc == null) {
-                log.warn("文档不存在: docId={}", docId);
-                return;
-            }
-            
-            // 更新状态为处理中
-            knowledgeDocMapper.updateProcessStatus(docId, "PROCESSING", null);
-            
-            // 1. 解析文档内容
-            log.info("步骤1: 解析文档 - {}", doc.getFilePath());
-            DocumentParser parser = parserFactory.getParser(doc.getFileType());
-            String content = parser.parse(doc.getFilePath());
-            
-            if (content == null || content.trim().isEmpty()) {
-                throw new DocumentParseException("文档内容为空");
-            }
-            log.info("文档解析完成: 内容长度={}", content.length());
-            
-            // 2. 文本切块
-            log.info("步骤2: 文本切块");
-            List<KnowledgeChunk> chunks = textChunkService.chunkText(content, docId, doc.getFileType());
-            
-            if (chunks.isEmpty()) {
-                throw new RuntimeException("文本切块结果为空");
-            }
-            log.info("文本切块完成: 切块数量={}", chunks.size());
-            
-            // 保存切块到数据库
-            for (KnowledgeChunk chunk : chunks) {
-                knowledgeChunkMapper.insert(chunk);
-            }
-            
-            // 3. 向量化
-            log.info("步骤3: 向量化处理");
-            List<String> texts = chunks.stream()
-                    .map(KnowledgeChunk::getContent)
-                    .collect(Collectors.toList());
-            
-            List<float[]> vectors = embeddingService.embedBatch(texts);
-            log.info("向量化完成: 向量数量={}", vectors.size());
-            
-            // 4. 存入Milvus
-            log.info("步骤4: 存入Milvus向量数据库");
-            List<Long> chunkIds = chunks.stream()
-                    .map(KnowledgeChunk::getId)
-                    .collect(Collectors.toList());
-            List<Long> docIds = chunks.stream()
-                    .map(c -> docId)
-                    .collect(Collectors.toList());
-            List<String> categories = chunks.stream()
-                    .map(c -> doc.getCategory() != null ? doc.getCategory() : "default")
-                    .collect(Collectors.toList());
-            
-            milvusService.insertVectors(vectors, chunkIds, docIds, texts, categories);
-            
-            // 更新文档状态
-            doc.setVectorCount(chunks.size());
-            knowledgeDocMapper.updateById(doc);
-            knowledgeDocMapper.updateProcessStatus(docId, "COMPLETED", 
-                    String.format("处理成功: %d个切块", chunks.size()));
-            
-            log.info("文档处理完成: docId={}, 切块数={}", docId, chunks.size());
-            
-        } catch (DocumentParseException e) {
-            log.error("文档解析失败: docId={}", docId, e);
-            knowledgeDocMapper.updateProcessStatus(docId, "FAILED", "解析失败: " + e.getMessage());
-        } catch (Exception e) {
-            log.error("文档处理失败: docId={}", docId, e);
-            knowledgeDocMapper.updateProcessStatus(docId, "FAILED", e.getMessage());
-        }
     }
 
     private String getFileExtension(String filename) {
