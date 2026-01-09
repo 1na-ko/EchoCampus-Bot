@@ -19,6 +19,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -89,8 +91,14 @@ public class KnowledgeServiceImpl implements KnowledgeService {
             
             knowledgeDocMapper.insert(doc);
             
-            // 4. 异步处理文档（通过独立服务调用，确保@Async生效）
-            documentProcessService.processDocumentAsync(doc.getId());
+            // 4. 在事务提交后异步处理文档（避免异步线程读取到未提交的数据）
+            final Long docId = doc.getId();
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    documentProcessService.processDocumentAsync(docId);
+                }
+            });
             
             log.info("文档上传成功: docId={}, title={}", doc.getId(), doc.getTitle());
             return doc;
@@ -183,8 +191,13 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         doc.setProcessStatus("PENDING");
         knowledgeDocMapper.updateById(doc);
         
-        // 异步重新处理（通过独立服务调用，确保@Async生效）
-        documentProcessService.processDocumentAsync(docId);
+        // 在事务提交后异步重新处理（避免异步线程读取到未提交的数据）
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                documentProcessService.processDocumentAsync(docId);
+            }
+        });
     }
 
     @Override
