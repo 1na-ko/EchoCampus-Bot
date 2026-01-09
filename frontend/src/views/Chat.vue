@@ -83,7 +83,7 @@
               <RobotOutlined :style="{ fontSize: '64px', color: 'var(--primary-color)' }" />
             </div>
             <h1 class="welcome-title">EchoCampus Bot</h1>
-            <p class="welcome-subtitle">我是您的智能IT知识助手，有什么可以帮您？</p>
+            <p class="welcome-subtitle">我是您的智能校园问答助手，有什么可以帮您？</p>
           </div>
         </div>
         <div ref="messagesContainer" class="messages-container">
