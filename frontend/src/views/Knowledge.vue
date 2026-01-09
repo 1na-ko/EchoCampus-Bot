@@ -1,130 +1,160 @@
 <template>
-  <div class="knowledge-container">
-    <div class="knowledge-header">
-      <div class="header-left">
-        <h2 class="page-title">知识库管理</h2>
-        <a-space>
-          <a-select
-            v-model:value="filterCategory"
-            placeholder="选择分类"
-            style="width: 150px"
-            allowClear
-            @change="handleFilterChange"
-          >
-            <a-select-option value="">全部分类</a-select-option>
-            <a-select-option
-              v-for="cat in knowledgeStore.categories"
-              :key="cat.id"
-              :value="cat.name"
+  <div class="knowledge-view">
+    <div class="content-container">
+      <!-- Background Elements -->
+      <div class="bg-decoration"></div>
+
+      <!-- Header Section -->
+      <div class="page-header">
+        <div class="header-main">
+          <div class="title-section">
+            <h1 class="main-title">知识库</h1>
+            <p class="sub-title">管理您的文档资产与知识向量</p>
+          </div>
+          <a-button type="primary" size="large" class="upload-btn" @click="showUploadModal = true">
+            <template #icon><UploadOutlined /></template>
+            上传文档
+          </a-button>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+          <div class="search-wrapper">
+             <a-input
+              v-model:value="keyword"
+              placeholder="搜索文档..."
+              class="custom-input search-input"
+              @pressEnter="handleSearch"
             >
-              {{ cat.name }} ({{ cat.docCount }})
-            </a-select-option>
-          </a-select>
+              <template #prefix><SearchOutlined style="color: #bfbfbf" /></template>
+            </a-input>
+          </div>
+          
+          <div class="filters-group">
+            <a-select
+              v-model:value="filterCategory"
+              placeholder="全部分类"
+              class="custom-select"
+              :bordered="false"
+              allowClear
+              @change="handleFilterChange"
+            >
+              <a-select-option value="">全部分类</a-select-option>
+              <a-select-option
+                v-for="cat in knowledgeStore.categories"
+                :key="cat.id"
+                :value="cat.name"
+              >
+                {{ cat.name }} <span style="color: #999; font-size: 12px">({{ cat.docCount }})</span>
+              </a-select-option>
+            </a-select>
 
-          <a-select
-            v-model:value="filterStatus"
-            placeholder="文档状态"
-            style="width: 120px"
-            allowClear
-            @change="handleFilterChange"
-          >
-            <a-select-option value="">全部状态</a-select-option>
-            <a-select-option value="ACTIVE">正常</a-select-option>
-            <a-select-option value="PROCESSING">处理中</a-select-option>
-            <a-select-option value="FAILED">失败</a-select-option>
-          </a-select>
-
-          <a-input-search
-            v-model:value="keyword"
-            placeholder="搜索文档..."
-            style="width: 250px"
-            @search="handleSearch"
-          />
-        </a-space>
+            <a-select
+              v-model:value="filterStatus"
+              placeholder="全部状态"
+              class="custom-select"
+              style="width: 140px"
+              :bordered="false"
+              allowClear
+              @change="handleFilterChange"
+            >
+              <a-select-option value="">全部状态</a-select-option>
+              <a-select-option value="ACTIVE">正常</a-select-option>
+              <a-select-option value="PROCESSING">处理中</a-select-option>
+              <a-select-option value="FAILED">失败</a-select-option>
+            </a-select>
+          </div>
+        </div>
       </div>
 
-      <a-button type="primary" size="large" @click="showUploadModal = true">
-        <UploadOutlined /> 上传文档
-      </a-button>
-    </div>
-
-    <a-spin :spinning="knowledgeStore.isLoading">
-      <div class="documents-grid">
-        <div
-          v-for="doc in knowledgeStore.documents"
-          :key="doc.id"
-          class="document-card"
-        >
-          <div class="document-header">
-            <FileOutlined class="document-icon" />
-            <a-dropdown :trigger="['click']">
-              <MoreOutlined class="document-more" />
-              <template #overlay>
-                <a-menu>
-                  <a-menu-item @click="handleViewDoc(doc)">
-                    <EyeOutlined /> 查看详情
-                  </a-menu-item>
-                  <a-menu-item @click="handleEditDoc(doc)">
-                    <EditOutlined /> 编辑信息
-                  </a-menu-item>
-                  <a-menu-item @click="handleReindex(doc.id)">
-                    <ReloadOutlined /> 重新索引
-                  </a-menu-item>
-                  <a-menu-divider />
-                  <a-menu-item danger @click="handleDeleteDoc(doc.id)">
-                    <DeleteOutlined /> 删除文档
-                  </a-menu-item>
-                </a-menu>
-              </template>
-            </a-dropdown>
-          </div>
-
-          <div class="document-body">
-            <h3 class="document-title">{{ doc.title }}</h3>
-            <p class="document-desc">{{ doc.description || '暂无描述' }}</p>
-
-            <div class="document-meta">
-              <a-tag :color="getStatusColor(doc.status)">{{ getStatusText(doc.status) }}</a-tag>
-              <a-tag v-if="doc.category" color="blue">{{ doc.category }}</a-tag>
-              <span class="document-size">{{ formatFileSize(doc.fileSize) }}</span>
-            </div>
-
-            <div class="document-stats">
-              <div class="stat-item">
-                <span class="stat-label">向量数</span>
-                <span class="stat-value">{{ doc.vectorCount || 0 }}</span>
+      <!-- Content Grid -->
+      <a-spin :spinning="knowledgeStore.isLoading">
+        <div class="documents-grid" v-if="knowledgeStore.documents.length > 0">
+          <div
+            v-for="doc in knowledgeStore.documents"
+            :key="doc.id"
+            class="document-card"
+          >
+            <div class="card-status-indicator" :class="doc.status.toLowerCase()"></div>
+            
+            <div class="card-top">
+              <div class="file-icon-box" :style="{ background: getFileIconColor(doc.fileType) + '15', color: getFileIconColor(doc.fileType) }">
+                <component :is="getFileIcon(doc.fileType)" />
               </div>
-              <div class="stat-item">
-                <span class="stat-label">文件类型</span>
-                <span class="stat-value">{{ doc.fileType.toUpperCase() }}</span>
+              <div class="card-menu">
+                <a-dropdown :trigger="['click']">
+                  <a-button type="text" shape="circle" size="small">
+                    <MoreOutlined />
+                  </a-button>
+                  <template #overlay>
+                    <a-menu>
+                      <a-menu-item @click="handleViewDoc(doc)">
+                        <EyeOutlined /> 查看详情
+                      </a-menu-item>
+                      <a-menu-item @click="handleEditDoc(doc)">
+                        <EditOutlined /> 编辑信息
+                      </a-menu-item>
+                      <a-menu-item @click="handleReindex(doc.id)">
+                        <ReloadOutlined /> 重新索引
+                      </a-menu-item>
+                      <a-menu-divider />
+                      <a-menu-item danger @click="handleDeleteDoc(doc.id)">
+                        <DeleteOutlined /> 删除文档
+                      </a-menu-item>
+                    </a-menu>
+                  </template>
+                </a-dropdown>
               </div>
             </div>
 
-            <div class="document-footer">
-              <span class="document-time">{{ formatTime(doc.createdAt) }}</span>
+            <div class="card-content">
+              <h3 class="doc-title" :title="doc.title">{{ doc.title }}</h3>
+              <p class="doc-desc">{{ doc.description || '暂无描述' }}</p>
+              
+              <div class="doc-meta">
+                 <span class="meta-item"><span class="label">大小: </span>{{ formatFileSize(doc.fileSize) }}</span>
+                 <span class="meta-item category" v-if="doc.category">{{ doc.category }}</span>
+              </div>
+            </div>
+
+            <div class="card-footer">
+              <div class="footer-stats">
+                 <div class="stat">
+                    <span class="val">{{ doc.vectorCount || 0 }}</span>
+                    <span class="lbl">向量</span>
+                 </div>
+                 <div class="divider"></div>
+                 <div class="stat">
+                    <span class="val">{{ doc.fileType.toUpperCase() }}</span>
+                    <span class="lbl">类型</span>
+                 </div>
+              </div>
+              <div class="footer-time">{{ formatTime(doc.createdAt).split(' ')[0] }}</div>
             </div>
           </div>
         </div>
 
-        <a-empty
-          v-if="knowledgeStore.documents.length === 0 && !knowledgeStore.isLoading"
-          description="暂无文档"
-          :image="Empty.PRESENTED_IMAGE_SIMPLE"
-        />
-      </div>
+        <div v-else-if="!knowledgeStore.isLoading" class="empty-state">
+           <div class="empty-icon-bg">
+             <FileOutlined />
+           </div>
+           <h3>暂无文档</h3>
+           <p>您可以上传文档来构建专属于您的知识库</p>
+           <a-button type="primary" @click="showUploadModal = true">立即上传</a-button>
+        </div>
 
-      <div v-if="knowledgeStore.total > 0" class="pagination-container">
-        <a-pagination
-          v-model:current="knowledgeStore.page"
-          v-model:pageSize="knowledgeStore.size"
-          :total="knowledgeStore.total"
-          show-size-changer
-          show-quick-jumper
-          :show-total="(total) => `共 ${total} 个文档`"
-          @change="handlePageChange"
-        />
-      </div>
-    </a-spin>
+        <div v-if="knowledgeStore.total > 0" class="pagination-wrapper">
+          <a-pagination
+            v-model:current="knowledgeStore.page"
+            v-model:pageSize="knowledgeStore.size"
+            :total="knowledgeStore.total"
+            show-size-changer
+            :show-total="(total) => `共 ${total} 个文档`"
+            @change="handlePageChange"
+          />
+        </div>
+      </a-spin>
+    </div>
 
     <!-- 上传文档弹窗 -->
     <a-modal
@@ -305,6 +335,12 @@ import {
   EditOutlined,
   DeleteOutlined,
   ReloadOutlined,
+  FilePdfOutlined,
+  FileWordOutlined,
+  FileMarkdownOutlined,
+  FileTextOutlined,
+  FilePptOutlined,
+  SearchOutlined,
 } from '@ant-design/icons-vue'
 import UploadProgress from '@/components/UploadProgress.vue'
 
@@ -546,6 +582,26 @@ const getStatusText = (status: string) => {
   return texts[status] || status
 }
 
+const getFileIcon = (fileType: string) => {
+  const type = (fileType || '').toLowerCase()
+  if (type.includes('pdf')) return FilePdfOutlined
+  if (type.includes('doc')) return FileWordOutlined
+  if (type.includes('md') || type.includes('markdown')) return FileMarkdownOutlined
+  if (type.includes('txt')) return FileTextOutlined
+  if (type.includes('ppt')) return FilePptOutlined
+  return FileOutlined
+}
+
+const getFileIconColor = (fileType: string) => {
+  const type = (fileType || '').toLowerCase()
+  if (type.includes('pdf')) return '#ff4d4f'
+  if (type.includes('doc')) return '#1890ff'
+  if (type.includes('md') || type.includes('markdown')) return '#333'
+  if (type.includes('txt')) return '#666'
+  if (type.includes('ppt')) return '#fa8c16'
+  return 'var(--primary-color)'
+}
+
 onMounted(() => {
   knowledgeStore.fetchDocuments()
   knowledgeStore.fetchCategories()
@@ -553,174 +609,297 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.knowledge-container {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  min-height: calc(100vh - 160px);
+.knowledge-view {
+  min-height: calc(100vh - 84px);
+  padding: 0;
+  position: relative;
+  /* border-radius: var(--radius-lg); */
+  overflow: visible;
 }
 
-.knowledge-header {
+.content-container {
+  position: relative;
+  z-index: 1;
+}
+
+/* Background Decoration */
+.bg-decoration {
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.05) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Page Header */
+.page-header {
+  margin-bottom: 32px;
+}
+
+.header-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.main-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  letter-spacing: -0.5px;
+}
+
+.sub-title {
+  color: var(--text-tertiary);
+  font-size: 14px;
+}
+
+.upload-btn {
+  height: 44px;
+  border-radius: var(--radius-full);
+  padding: 0 24px;
+  font-weight: 500;
+  background: var(--gradient-primary);
+  border: none;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  transition: all 0.3s ease;
+}
+
+.upload-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+}
+
+/* Filter Bar */
+.filter-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
   flex-wrap: wrap;
   gap: 16px;
+  background: var(--surface-color);
+  padding: 8px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-light);
 }
 
-.header-left {
+.search-wrapper {
+  flex: 1;
+  min-width: 240px;
+}
+
+.custom-input :deep(.ant-input),
+.custom-input :deep(.ant-input-affix-wrapper) {
+  border: none;
+  box-shadow: none !important;
+  background: transparent;
+}
+
+.filters-group {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
+  gap: 12px;
 }
 
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  margin: 0;
+.custom-select {
+  min-width: 140px;
 }
 
+/* Grid */
 .documents-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+  padding-bottom: 40px;
 }
 
 .document-card {
-  border: 1px solid #f0f0f0;
-  border-radius: 12px;
+  position: relative;
+  background: var(--surface-color);
+  border-radius: var(--radius-lg);
   padding: 20px;
-  transition: all 0.3s;
-  background: white;
+  border: 1px solid var(--border-color);
+  transition: all var(--transition-normal);
+  cursor: pointer;
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .document-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
+  border-color: transparent;
 }
 
-.document-header {
+.card-status-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: #d9d9d9;
+  transition: background 0.3s;
+}
+
+.card-status-indicator.active { background: #52c41a; }
+.card-status-indicator.processing { background: #1890ff; }
+.card-status-indicator.failed { background: #ff4d4f; }
+
+.card-top {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  padding-left: 12px;
+}
+
+.file-icon-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
   align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.card-menu .more-btn {
+  color: var(--text-tertiary);
+}
+.card-menu .more-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
+.card-content {
+  flex: 1;
+  padding-left: 12px;
   margin-bottom: 16px;
 }
 
-.document-icon {
-  font-size: 28px;
-  color: #1890ff;
-}
-
-.document-more {
-  font-size: 18px;
-  color: #999;
-  cursor: pointer;
-  padding: 4px;
-}
-
-.document-more:hover {
-  color: #1890ff;
-}
-
-.document-body {
-  flex: 1;
-}
-
-.document-title {
+.doc-title {
   font-size: 16px;
   font-weight: 600;
-  margin: 0 0 8px;
-  color: #1a1a1a;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.document-desc {
+.doc-desc {
   font-size: 13px;
-  color: #666;
-  margin: 0 0 12px;
+  color: var(--text-secondary);
   line-height: 1.5;
+  height: 40px;
   overflow: hidden;
-  text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-}
-
-.document-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
-  align-items: center;
-}
-
-.document-size {
-  font-size: 12px;
-  color: #999;
-}
-
-.document-stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  padding: 12px;
-  background: #fafafa;
-  border-radius: 8px;
   margin-bottom: 12px;
 }
 
-.stat-item {
+.doc-meta {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.stat-label {
+  gap: 12px;
   font-size: 12px;
-  color: #999;
+  color: var(--text-tertiary);
 }
 
-.stat-value {
-  font-size: 14px;
-  font-weight: 500;
-  color: #1a1a1a;
+.meta-tag.category {
+  color: var(--primary-color);
+  background: rgba(99, 102, 241, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
 }
 
-.document-footer {
+.card-footer {
+  padding-top: 16px;
+  border-top: 1px solid var(--border-light);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding-left: 12px;
 }
 
-.document-time {
+.footer-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.footer-stats .stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.footer-stats .val {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.footer-stats .lbl {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+.footer-stats .divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border-light);
+}
+
+.footer-time {
   font-size: 12px;
-  color: #999;
+  color: var(--text-tertiary);
 }
 
-.pagination-container {
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 0;
+  text-align: center;
+}
+
+.empty-icon-bg {
+  width: 80px;
+  height: 80px;
+  background: var(--bg-secondary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  color: var(--text-tertiary);
+  margin-bottom: 16px;
+}
+
+.pagination-wrapper {
   display: flex;
   justify-content: center;
-  padding-top: 24px;
-  border-top: 1px solid #f0f0f0;
+  margin-top: 20px;
 }
 
 @media (max-width: 768px) {
-  .documents-grid {
-    grid-template-columns: 1fr;
+  .header-main {
+    flex-direction: column;
+    gap: 16px;
   }
-
-  .knowledge-header {
+  .filter-bar {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .header-left {
-    flex-direction: column;
   }
 }
 </style>
