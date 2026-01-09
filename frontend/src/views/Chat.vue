@@ -423,8 +423,11 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  // 取消正在进行的流式请求
-  chatStore.cancelStream()
+  // 不取消流式请求，让后台对话继续生成
+  // 如果确实需要取消当前对话的请求，可以使用：
+  // if (currentConvId.value) {
+  //   chatStore.cancelStream(currentConvId.value)
+  // }
 })
 </script>
 
