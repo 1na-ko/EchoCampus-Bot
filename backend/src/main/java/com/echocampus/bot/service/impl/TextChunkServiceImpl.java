@@ -2,45 +2,32 @@ package com.echocampus.bot.service.impl;
 
 import com.echocampus.bot.entity.KnowledgeChunk;
 import com.echocampus.bot.service.TextChunkService;
+import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.document.DocumentSplitter;
+import dev.langchain4j.data.document.splitter.DocumentByParagraphSplitter;
+import dev.langchain4j.data.document.splitter.DocumentBySentenceSplitter;
+import dev.langchain4j.data.document.splitter.DocumentByCharacterSplitter;
+import dev.langchain4j.data.segment.TextSegment;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * 文本切块服务实现
- * 采用递归分割策略，根据不同文档类型使用不同的切块参数
+ * 基于 LangChain4j 的文档分割器，支持语义保持
  */
 @Slf4j
 @Service
 public class TextChunkServiceImpl implements TextChunkService {
 
-    @Value("${chunking.max-size:500}")
+    @Value("${document.chunking.max-size:500}")
     private int defaultMaxSize;
 
-    @Value("${chunking.overlap-size:50}")
+    @Value("${document.chunking.overlap-size:50}")
     private int defaultOverlapSize;
-
-    // 分隔符优先级：段落 > 句子 > 短语 > 单词
-    private static final String[] SEPARATORS = {
-        "\n\n",     // 段落分隔
-        "\n",       // 换行
-        "。",       // 中文句号
-        "！",       // 中文感叹号
-        "？",       // 中文问号
-        ".",        // 英文句号
-        "!",        // 英文感叹号
-        "?",        // 英文问号
-        "；",       // 中文分号
-        ";",        // 英文分号
-        "，",       // 中文逗号
-        ",",        // 英文逗号
-        " "         // 空格
-    };
 
     @Override
     public List<KnowledgeChunk> chunkText(String text, Long docId, String fileType) {
@@ -55,134 +42,108 @@ public class TextChunkServiceImpl implements TextChunkService {
     }
 
     /**
-     * 执行切块操作
+     * 使用 LangChain4j 执行切块操作
      */
     private List<KnowledgeChunk> doChunk(String text, Long docId, int maxSize, int overlapSize) {
         List<KnowledgeChunk> chunks = new ArrayList<>();
-        
+
         if (text == null || text.trim().isEmpty()) {
             return chunks;
         }
 
         // 预处理文本
         text = preprocessText(text);
-        
-        // 递归分割
-        List<String> textChunks = recursiveSplit(text, maxSize, overlapSize, 0);
-        
-        // 创建KnowledgeChunk对象
-        int position = 0;
-        for (int i = 0; i < textChunks.size(); i++) {
-            String chunkContent = textChunks.get(i).trim();
-            
-            if (chunkContent.isEmpty()) {
-                continue;
+
+        try {
+            // 创建 LangChain4j Document
+            Document document = Document.from(text);
+
+            // 使用分层分割策略：
+            // 1. 先按段落分割
+            // 2. 如果段落太大，再按句子分割
+            // 3. 如果句子还太大，按字符分割
+            DocumentSplitter splitter = createHierarchicalSplitter(maxSize, overlapSize);
+
+            // 执行分割
+            List<TextSegment> segments = splitter.split(document);
+
+            // 转换为 KnowledgeChunk
+            int position = 0;
+            for (int i = 0; i < segments.size(); i++) {
+                TextSegment segment = segments.get(i);
+                String content = segment.text().trim();
+
+                if (content.isEmpty()) {
+                    continue;
+                }
+
+                KnowledgeChunk chunk = new KnowledgeChunk();
+                chunk.setDocId(docId);
+                chunk.setChunkIndex(i);
+                chunk.setContent(content);
+                chunk.setStartPosition(position);
+                chunk.setEndPosition(position + content.length());
+                chunk.setTokenCount(estimateTokenCount(content));
+
+                chunks.add(chunk);
+                position += content.length();
             }
-            
-            KnowledgeChunk chunk = new KnowledgeChunk();
-            chunk.setDocId(docId);
-            chunk.setChunkIndex(i);
-            chunk.setContent(chunkContent);
-            chunk.setStartPosition(position);
-            chunk.setEndPosition(position + chunkContent.length());
-            chunk.setTokenCount(estimateTokenCount(chunkContent));
-            
-            chunks.add(chunk);
-            position += chunkContent.length();
+
+            log.info("LangChain4j文本切块完成: docId={}, 原文长度={}, 切块数={}, maxSize={}, overlap={}",
+                    docId, text.length(), chunks.size(), maxSize, overlapSize);
+
+        } catch (Exception e) {
+            log.error("LangChain4j切块失败，回退到简单分割: {}", e.getMessage());
+            // 回退到简单分割
+            chunks = fallbackSplit(text, docId, maxSize, overlapSize);
         }
-        
-        log.info("文本切块完成: docId={}, 原文长度={}, 切块数={}, maxSize={}, overlap={}", 
-            docId, text.length(), chunks.size(), maxSize, overlapSize);
-        
+
         return chunks;
     }
 
     /**
-     * 递归分割文本
+     * 创建分层分割器（段落 -> 句子 -> 字符）
      */
-    private List<String> recursiveSplit(String text, int maxSize, int overlapSize, int separatorIndex) {
-        List<String> result = new ArrayList<>();
-        
-        // 如果文本已经足够小，直接返回
-        if (text.length() <= maxSize) {
-            if (!text.trim().isEmpty()) {
-                result.add(text);
-            }
-            return result;
-        }
-        
-        // 如果没有更多分隔符，强制按长度分割
-        if (separatorIndex >= SEPARATORS.length) {
-            return forceSplit(text, maxSize, overlapSize);
-        }
-        
-        String separator = SEPARATORS[separatorIndex];
-        String[] parts = text.split(Pattern.quote(separator), -1);
-        
-        // 如果分割没有效果，尝试下一个分隔符
-        if (parts.length == 1) {
-            return recursiveSplit(text, maxSize, overlapSize, separatorIndex + 1);
-        }
-        
-        StringBuilder currentChunk = new StringBuilder();
-        
-        for (int i = 0; i < parts.length; i++) {
-            String part = parts[i];
-            
-            // 如果当前部分加上分隔符会超过最大长度
-            if (currentChunk.length() + part.length() + separator.length() > maxSize) {
-                // 保存当前块
-                if (currentChunk.length() > 0) {
-                    result.add(currentChunk.toString());
-                    
-                    // 添加重叠部分
-                    if (overlapSize > 0 && currentChunk.length() > overlapSize) {
-                        String overlap = currentChunk.substring(currentChunk.length() - overlapSize);
-                        currentChunk = new StringBuilder(overlap);
-                    } else {
-                        currentChunk = new StringBuilder();
-                    }
-                }
-                
-                // 如果单个部分就超过最大长度，递归处理
-                if (part.length() > maxSize) {
-                    List<String> subChunks = recursiveSplit(part, maxSize, overlapSize, separatorIndex + 1);
-                    result.addAll(subChunks);
-                    continue;
-                }
-            }
-            
-            // 添加分隔符（除了第一个部分）
-            if (currentChunk.length() > 0 && !separator.equals(" ")) {
-                currentChunk.append(separator);
-            }
-            currentChunk.append(part);
-        }
-        
-        // 添加最后一个块
-        if (currentChunk.length() > 0) {
-            result.add(currentChunk.toString());
-        }
-        
-        return result;
+    private DocumentSplitter createHierarchicalSplitter(int maxSize, int overlapSize) {
+        // 字符级分割器（最后的兜底）
+        DocumentSplitter charSplitter = new DocumentByCharacterSplitter(maxSize, overlapSize);
+
+        // 句子级分割器，子分割器为字符级
+        DocumentSplitter sentenceSplitter = new DocumentBySentenceSplitter(maxSize, overlapSize, charSplitter);
+
+        // 段落级分割器，子分割器为句子级
+        return new DocumentByParagraphSplitter(maxSize, overlapSize, sentenceSplitter);
     }
 
     /**
-     * 强制按长度分割（最后的手段）
+     * 回退分割方案（简单按长度分割）
      */
-    private List<String> forceSplit(String text, int maxSize, int overlapSize) {
-        List<String> result = new ArrayList<>();
-        
+    private List<KnowledgeChunk> fallbackSplit(String text, Long docId, int maxSize, int overlapSize) {
+        List<KnowledgeChunk> chunks = new ArrayList<>();
         int start = 0;
+        int index = 0;
+
         while (start < text.length()) {
             int end = Math.min(start + maxSize, text.length());
-            result.add(text.substring(start, end));
+            String content = text.substring(start, end).trim();
+
+            if (!content.isEmpty()) {
+                KnowledgeChunk chunk = new KnowledgeChunk();
+                chunk.setDocId(docId);
+                chunk.setChunkIndex(index++);
+                chunk.setContent(content);
+                chunk.setStartPosition(start);
+                chunk.setEndPosition(end);
+                chunk.setTokenCount(estimateTokenCount(content));
+                chunks.add(chunk);
+            }
+
             start = end - overlapSize;
-            if (start < 0) start = 0;
-            if (start >= text.length()) break;
+            if (start <= 0 || start >= text.length()) break;
         }
-        
-        return result;
+
+        log.warn("使用回退分割完成: docId={}, 切块数={}", docId, chunks.size());
+        return chunks;
     }
 
     /**
@@ -192,17 +153,17 @@ public class TextChunkServiceImpl implements TextChunkService {
         // 统一换行符
         text = text.replaceAll("\\r\\n", "\n");
         text = text.replaceAll("\\r", "\n");
-        
+
         // 移除连续空行（保留最多两个换行）
         text = text.replaceAll("\n{3,}", "\n\n");
-        
+
         // 移除行首行尾空白
         String[] lines = text.split("\n");
         StringBuilder sb = new StringBuilder();
         for (String line : lines) {
             sb.append(line.trim()).append("\n");
         }
-        
+
         return sb.toString().trim();
     }
 
@@ -212,7 +173,7 @@ public class TextChunkServiceImpl implements TextChunkService {
     private int estimateTokenCount(String text) {
         int chineseCount = 0;
         int otherCount = 0;
-        
+
         for (char c : text.toCharArray()) {
             if (Character.UnicodeScript.of(c) == Character.UnicodeScript.HAN) {
                 chineseCount++;
@@ -220,7 +181,7 @@ public class TextChunkServiceImpl implements TextChunkService {
                 otherCount++;
             }
         }
-        
+
         return chineseCount + (otherCount / 4);
     }
 
@@ -231,7 +192,7 @@ public class TextChunkServiceImpl implements TextChunkService {
         if (fileType == null) {
             return new ChunkConfig(defaultMaxSize, defaultOverlapSize);
         }
-        
+
         return switch (fileType.toLowerCase()) {
             case "pdf" -> new ChunkConfig(800, 100);
             case "md", "markdown" -> new ChunkConfig(600, 80);
