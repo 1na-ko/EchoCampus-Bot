@@ -1,12 +1,23 @@
 <template>
   <div class="chat-container">
-    <div :class="['chat-sidebar', { collapsed: isSidebarCollapsed }]">
+    <div 
+      v-if="showMobileSidebar" 
+      class="mobile-sidebar-mask" 
+      @click="showMobileSidebar = false"
+    ></div>
+
+    <div :class="['chat-sidebar', { collapsed: isSidebarCollapsed, 'mobile-open': showMobileSidebar }]">
       <div class="sidebar-header">
         <div class="toggle-btn-container">
-          <a-button type="text" @click="toggleSidebar" class="toggle-btn">
+          <a-button type="text" @click="toggleSidebar" class="toggle-btn desktop-only">
             <template #icon>
               <MenuUnfoldOutlined v-if="isSidebarCollapsed" />
               <MenuFoldOutlined v-else />
+            </template>
+          </a-button>
+           <a-button type="text" @click="showMobileSidebar = false" class="toggle-btn mobile-only">
+            <template #icon>
+              <MenuFoldOutlined />
             </template>
           </a-button>
         </div>
@@ -76,6 +87,12 @@
     </div>
 
     <div class="chat-main">
+      <div class="mobile-chat-trigger mobile-only">
+         <a-button type="text" shape="circle" @click="showMobileSidebar = true" class="mobile-menu-btn">
+            <template #icon><MenuUnfoldOutlined /></template>
+         </a-button>
+      </div>
+
       <div class="chat-content">
         <div v-if="!currentConvId && chatStore.messages.length === 0" class="chat-welcome">
           <div class="welcome-content">
@@ -205,6 +222,10 @@
             </transition>
           </a-button>
         </div>
+        
+        <div class="ai-disclaimer">
+           内容由 AI 生成，请仔细甄别
+        </div>
       </div>
     </div>
   </div>
@@ -239,6 +260,7 @@ dayjs.locale('zh-cn')
 
 const chatStore = useChatStore()
 const isSidebarCollapsed = ref(false)
+const showMobileSidebar = ref(false)
 
 const currentConvId = ref<number | undefined>()
 const inputMessage = ref('')
@@ -353,6 +375,7 @@ const handleNewChat = () => {
 
 const selectConversation = async (id: number) => {
   currentConvId.value = id
+  showMobileSidebar.value = false // Close mobile sidebar on selection
   await chatStore.selectConversation(id)
   scrollToBottom()
 }
@@ -1313,28 +1336,138 @@ onUnmounted(() => {
 /* Ensure resting state is centered */
 /* Classes like enter-to and leave-from default to the element's actual style which is centered */
 
+
+/* Mobile Header (Hidden on Desktop) */
+.mobile-chat-trigger {
+  display: none;
+}
+
+.mobile-only {
+  display: none;
+}
+
+/* AI Disclaimer */
+.ai-disclaimer {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  padding: 8px 0 12px;
+  opacity: 0.8;
+  user-select: none;
+}
+
+/* Mobile Sidebar Mask */
+.mobile-sidebar-mask {
+  display: none;
+}
+
 @media (max-width: 768px) {
+  /* Fix container to full viewport */
   .chat-container {
-    height: 100vh;
+    position: fixed;
+    top: 64px; /* Reserve space for MainLayout Header */
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: calc(100dvh - 64px); /* Use dynamic viewport height minus header */
     margin: 0;
     border-radius: 0;
     border: none;
+    z-index: 90; /* Lower than MainLayout Sider (z-100) */
+  }
+
+  /* Sidebar: Off-canvas drawer */
+  .chat-sidebar {
+    display: flex !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    z-index: 300;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+  }
+
+  .chat-sidebar.mobile-open {
+    transform: translateX(0);
   }
   
-  .chat-sidebar {
+  /* Mask */
+  .mobile-sidebar-mask {
+    display: block;
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 200;
+    backdrop-filter: blur(2px);
+    animation: fade-in 0.3s;
+  }
+
+  /* Mobile Trigger */
+  .mobile-chat-trigger {
+    display: block;
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 50;
+  }
+  
+  .mobile-menu-btn {
+    background: var(--surface-color);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: 1px solid var(--border-light);
+    color: var(--text-secondary);
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+
+  /* Visibility Toggles */
+  .desktop-only {
     display: none;
   }
 
+  .mobile-only {
+    display: block;
+  }
+
+  /* Layout Adjustments */
+  .chat-main {
+    height: 100%;
+    overflow: hidden;
+  }
+
   .messages-container {
-    padding: 20px;
+    padding: 16px;
+    padding-bottom: 0;
+  }
+
+  .input-container {
+    padding: 12px 16px;
+    background: var(--surface-color);
+    border-top: 1px solid var(--border-light);
+    position: relative;
+    z-index: 10;
   }
 
   .message-content {
     max-width: 90%;
   }
 
-  .input-container {
-    padding: 16px;
+  /* Adjust disclaimer on mobile */
+  .ai-disclaimer {
+     padding-bottom: env(safe-area-inset-bottom, 16px);
+     background: var(--surface-color);
   }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 </style>
