@@ -85,6 +85,13 @@
             <version>${langchain4j.version}</version>
         </dependency>
 
+        <!-- LangChain4j OpenAI 集成 (支持工具调用) -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-open-ai</artifactId>
+            <version>${langchain4j.version}</version>
+        </dependency>
+
         <!-- Knife4j API文档 -->
         <dependency>
             <groupId>com.github.xiaoymin</groupId>
