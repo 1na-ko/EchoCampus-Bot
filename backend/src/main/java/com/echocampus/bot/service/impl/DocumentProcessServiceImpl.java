@@ -35,7 +35,7 @@ public class DocumentProcessServiceImpl implements DocumentProcessService {
     private final DocumentProgressService documentProgressService;
 
     @Override
-    @Async
+    @Async("documentProcessExecutor")
     public void processDocumentAsync(Long docId) {
         log.info("开始异步处理文档: docId={}", docId);
         

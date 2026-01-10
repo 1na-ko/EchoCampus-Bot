@@ -4,12 +4,15 @@ import com.echocampus.bot.dto.response.DocumentProgressDTO;
 import com.echocampus.bot.service.DocumentProgressService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 文档处理进度服务实现类
@@ -19,6 +22,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 @RequiredArgsConstructor
 public class DocumentProgressServiceImpl implements DocumentProgressService {
+
+    private static final int MAX_SSE_CONNECTIONS = 50;
+    private static final long SSE_TIMEOUT_MINUTES = 30;
 
     /**
      * 存储每个文档的SSE发射器
@@ -33,27 +39,51 @@ public class DocumentProgressServiceImpl implements DocumentProgressService {
     private final Map<Long, DocumentProgressDTO> progressCache = new ConcurrentHashMap<>();
 
     /**
+     * 存储SSE连接创建时间
+     * key: docId, value: 创建时间
+     */
+    private final Map<Long, LocalDateTime> connectionTimestamps = new ConcurrentHashMap<>();
+
+    /**
+     * 当前SSE连接数
+     */
+    private final AtomicInteger currentConnections = new AtomicInteger(0);
+
+    /**
      * 注册SSE发射器
      * @param docId 文档ID
      * @return SseEmitter
      */
     public SseEmitter registerEmitter(Long docId) {
+        // 检查连接数限制
+        int currentCount = currentConnections.get();
+        if (currentCount >= MAX_SSE_CONNECTIONS) {
+            log.warn("SSE连接数已达上限: current={}, max={}", currentCount, MAX_SSE_CONNECTIONS);
+            throw new IllegalStateException("SSE连接数已达上限，请稍后再试");
+        }
+        
         // SSE超时时间设为30分钟，足够处理大文档
-        SseEmitter emitter = new SseEmitter(30 * 60 * 1000L);
+        SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MINUTES * 60 * 1000L);
         
         emitter.onCompletion(() -> {
             log.debug("SSE连接完成: docId={}", docId);
             emitters.remove(docId);
+            connectionTimestamps.remove(docId);
+            currentConnections.decrementAndGet();
         });
         
         emitter.onTimeout(() -> {
             log.warn("SSE连接超时: docId={}", docId);
             emitters.remove(docId);
+            connectionTimestamps.remove(docId);
+            currentConnections.decrementAndGet();
         });
         
         emitter.onError((e) -> {
             log.error("SSE连接错误: docId={}, error={}", docId, e.getMessage());
             emitters.remove(docId);
+            connectionTimestamps.remove(docId);
+            currentConnections.decrementAndGet();
         });
         
         // 移除旧的发射器
@@ -64,9 +94,15 @@ public class DocumentProgressServiceImpl implements DocumentProgressService {
             } catch (Exception e) {
                 // 忽略完成时的错误
             }
+        } else {
+            // 只有新连接才增加计数
+            currentConnections.incrementAndGet();
         }
         
-        log.info("注册SSE发射器: docId={}", docId);
+        // 记录连接时间
+        connectionTimestamps.put(docId, LocalDateTime.now());
+        
+        log.info("注册SSE发射器: docId={}, 当前连接数={}", docId, currentConnections.get());
         
         // 如果有缓存的进度，立即发送
         DocumentProgressDTO cachedProgress = progressCache.get(docId);
@@ -195,5 +231,38 @@ public class DocumentProgressServiceImpl implements DocumentProgressService {
     public void clearProgress(Long docId) {
         progressCache.remove(docId);
         removeEmitter(docId);
+    }
+
+    /**
+     * 定时清理超时的SSE连接
+     * 每5分钟执行一次
+     */
+    @Scheduled(fixedRate = 5 * 60 * 1000)
+    public void cleanupTimeoutConnections() {
+        LocalDateTime now = LocalDateTime.now();
+        int cleanedCount = 0;
+        
+        for (Map.Entry<Long, LocalDateTime> entry : connectionTimestamps.entrySet()) {
+            Long docId = entry.getKey();
+            LocalDateTime timestamp = entry.getValue();
+            
+            // 检查是否超时（超过35分钟，比SSE超时时间多5分钟缓冲）
+            if (timestamp.plusMinutes(SSE_TIMEOUT_MINUTES + 5).isBefore(now)) {
+                log.warn("清理超时SSE连接: docId={}, 连接时间={}", docId, timestamp);
+                removeEmitter(docId);
+                cleanedCount++;
+            }
+        }
+        
+        if (cleanedCount > 0) {
+            log.info("定时清理完成: 清理了{}个超时连接, 当前连接数={}", cleanedCount, currentConnections.get());
+        }
+    }
+
+    /**
+     * 获取当前SSE连接数
+     */
+    public int getCurrentConnectionCount() {
+        return currentConnections.get();
     }
 }
