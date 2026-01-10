@@ -91,17 +91,23 @@
             <div
               v-for="msg in chatStore.messages"
               :key="msg.id"
-              :class="['message-item', msg.senderType.toLowerCase()]"
+              :class="['message-item', msg.senderType.toLowerCase(), { 'no-animation': msg.metadata?.noAnimation }]"
             >
               <div class="message-avatar">
                 <UserOutlined v-if="msg.senderType === 'USER'" />
                 <RobotOutlined v-else />
               </div>
               <div class="message-content">
+                <!-- 如果是该轮的第一条BOT消息且有流式状态，显示状态 -->
+                <div v-if="msg.senderType === 'BOT' && isFirstBotInRound(msg) && chatStore.isSending && msg.roundId === getCurrentRoundId()" class="message-status">
+                  <LoadingOutlined spin />
+                  <span>{{ currentStatusText }}</span>
+                </div>
+                
                 <div class="message-text" v-html="renderMarkdown(msg.content)"></div>
                 
-                <!-- AI回复的知识来源 -->
-                <div v-if="msg.senderType === 'BOT' && msg.metadata?.sources?.length" class="message-sources">
+                <!-- AI回复的知识来源：只在该轮最后一条消息显示 -->
+                <div v-if="msg.senderType === 'BOT' && msg.isLastInRound && msg.metadata?.sources?.length" class="message-sources">
                   <a-collapse ghost>
                     <a-collapse-panel key="1">
                       <template #header>
@@ -136,39 +142,14 @@
               <RobotOutlined />
             </div>
             <div class="message-content">
-              <!-- 动态状态显示，回答过程中可以一直保留 -->
-              <div v-if="chatStore.isSending" class="message-status">
+              <!-- 状态显示：只在该轮还没有BOT消息时显示 -->
+              <div v-if="currentStatusText && !hasCurrentRoundBotMessage()" class="message-status">
                 <LoadingOutlined spin />
                 <span>{{ currentStatusText }}</span>
               </div>
               
               <!-- 流式内容显示 -->
               <div v-if="chatStore.streamingContent" class="message-text streaming" v-html="renderMarkdown(chatStore.streamingContent)"></div>
-
-              
-              <!-- 知识来源预览（在整个流式过程中保持显示） -->
-              <div v-if="chatStore.streamingSources.length > 0" class="message-sources preview">
-                <a-collapse ghost>
-                  <a-collapse-panel key="1">
-                    <template #header>
-                      <div class="sources-header">
-                        <DatabaseOutlined class="sources-icon" />
-                        <span>知识来源 ({{ chatStore.streamingSources.length }})</span>
-                      </div>
-                    </template>
-                    <div
-                      v-for="(source, idx) in chatStore.streamingSources"
-                      :key="idx"
-                      class="source-item"
-                    >
-                      <div class="source-header">
-                        <span class="source-title">{{ source.title }}</span>
-                      </div>
-                      <div class="source-content">{{ source.content }}</div>
-                    </div>
-                  </a-collapse-panel>
-                </a-collapse>
-              </div>
               
               <!-- 打字指示器 -->
               <div v-if="chatStore.processingStage === 'generating'" class="typing-indicator">
@@ -326,6 +307,41 @@ const renderMarkdown = (content: string) => {
 
 const formatTime = (time: string) => {
   return dayjs(time).fromNow()
+}
+
+// 判断是否是该轮对话的第一条BOT消息
+const isFirstBotInRound = (msg: Message) => {
+  if (msg.senderType !== 'BOT' || !msg.roundId) return false
+  
+  const messages = chatStore.messages
+  const botMessagesInRound = messages.filter(
+    m => m.senderType === 'BOT' && m.roundId === msg.roundId
+  )
+  
+  return botMessagesInRound.length > 0 && botMessagesInRound[0].id === msg.id
+}
+
+// 获取当前正在处理的roundId
+const getCurrentRoundId = () => {
+  const messages = chatStore.messages
+  if (messages.length === 0) return null
+  
+  // 查找最后一条USER消息的roundId
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].senderType === 'USER' && messages[i].roundId) {
+      return messages[i].roundId
+    }
+  }
+  return null
+}
+
+// 检查当前轮是否已有BOT消息
+const hasCurrentRoundBotMessage = () => {
+  const currentRoundId = getCurrentRoundId()
+  if (!currentRoundId) return false
+  
+  const messages = chatStore.messages
+  return messages.some(m => m.senderType === 'BOT' && m.roundId === currentRoundId)
 }
 
 const handleNewChat = () => {
@@ -529,6 +545,16 @@ onUnmounted(() => {
 .message-list-leave-to {
   opacity: 0;
   transform: translateY(-20px);
+}
+
+/* 禁用流式转正式消息的动画 */
+.message-item.no-animation.message-list-enter-active {
+  transition: none !important;
+}
+
+.message-item.no-animation.message-list-enter-from {
+  opacity: 1 !important;
+  transform: none !important;
 }
 
 .conversation-list {

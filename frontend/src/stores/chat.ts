@@ -182,7 +182,32 @@ export const useChatStore = defineStore('chat', {
     async fetchMessages(conversationId: number) {
       try {
         const res = await chatApi.getMessages(conversationId)
-        this.messagesMap.set(conversationId, res.data)
+        const messages = res.data
+        
+        // 为从数据库加载的消息分配roundId
+        // 规则：USER消息开始新一轮，后续BOT消息属于同一轮，直到下一个USER消息
+        let currentRoundId: number | null = null
+        messages.forEach((msg, index) => {
+          if (msg.senderType === 'USER') {
+            // USER消息开始新一轮
+            currentRoundId = msg.id
+            msg.roundId = currentRoundId
+          } else if (msg.senderType === 'BOT' && currentRoundId) {
+            // BOT消息属于当前轮
+            msg.roundId = currentRoundId
+            
+            // 检查是否是该轮最后一条BOT消息
+            // 向后查找，如果下一条是USER或没有下一条了，则是最后一条
+            const nextMsg = messages[index + 1]
+            if (!nextMsg || nextMsg.senderType === 'USER') {
+              msg.isLastInRound = true
+            } else {
+              msg.isLastInRound = false
+            }
+          }
+        })
+        
+        this.messagesMap.set(conversationId, messages)
         return true
       } catch (error) {
         console.error('Fetch messages error:', error)
@@ -220,6 +245,9 @@ export const useChatStore = defineStore('chat', {
       streamState.streamingMessageId = null
       streamState.streamingSources = []
 
+      // 生成本轮对话的roundId
+      const currentRoundId = Date.now()
+
       // 添加用户消息到界面
       const userMessage: Message = {
         id: Date.now(),
@@ -227,6 +255,7 @@ export const useChatStore = defineStore('chat', {
         senderType: 'USER',
         content,
         createdAt: new Date().toISOString(),
+        roundId: currentRoundId,
       }
       messages.push(userMessage)
       
@@ -248,6 +277,35 @@ export const useChatStore = defineStore('chat', {
       // 发起流式请求
       streamState.abortController = chatApi.sendMessageStream(request, {
         onStatus: (stage, convId, msgId) => {
+          // 检测新消息标记：保存当前内容为一条消息，开始新的流式内容
+          if (stage === '__NEW_MESSAGE__') {
+            if (streamState.streamingContent.trim()) {
+              const finalMessages = (newConversationId || conversationId) 
+                ? this._getOrCreateMessages(newConversationId || conversationId)
+                : messages
+              
+              // 中间消息不保存sources，只保存内容
+              const intermediateMessage: Message = {
+                id: Date.now() + Math.random(),
+                conversationId: newConversationId || conversationId || 0,
+                senderType: 'BOT',
+                content: streamState.streamingContent,
+                metadata: {
+                  isIntermediate: true, // 标记为中间消息
+                  noAnimation: true, // 不需要动画（已在流式框中显示过）
+                },
+                createdAt: new Date().toISOString(),
+                roundId: currentRoundId,
+                isLastInRound: false,
+              }
+              finalMessages.push(intermediateMessage)
+              
+              // 清空流式内容，开始新回答（sources继续累加）
+              streamState.streamingContent = ''
+            }
+            return
+          }
+          
           streamState.processingStatus = stage
           // 保存 conversationId 和 messageId
           if (convId) newConversationId = convId
@@ -288,6 +346,7 @@ export const useChatStore = defineStore('chat', {
         onSources: (sources, convId, msgId) => {
           if (convId) newConversationId = convId
           if (msgId) newMessageId = msgId
+          // 后端发送的是累加后的全部sources，直接替换
           streamState.streamingSources = sources
         },
         
@@ -309,20 +368,25 @@ export const useChatStore = defineStore('chat', {
           // 获取最终的消息列表（可能已经迁移）
           const finalMessages = convId ? this._getOrCreateMessages(convId) : messages
           
-          // 创建最终的AI消息
-          const botMessage: Message = {
-            id: newMessageId || Date.now() + 1,
-            conversationId: newConversationId || conversationId || 0,
-            senderType: 'BOT',
-            content: streamState.streamingContent,
-            metadata: {
-              sources: streamState.streamingSources,
-              usage: usage,
-              responseTimeMs: responseTimeMs,
-            },
-            createdAt: new Date().toISOString(),
+          // 只有当有内容时才添加最终消息
+          if (streamState.streamingContent.trim()) {
+            const botMessage: Message = {
+              id: newMessageId || Date.now() + 1,
+              conversationId: newConversationId || conversationId || 0,
+              senderType: 'BOT',
+              content: streamState.streamingContent,
+              metadata: {
+                sources: [...streamState.streamingSources],
+                usage: usage,
+                responseTimeMs: responseTimeMs,
+                noAnimation: true, // 标记为不需要动画（流式转正式）
+              },
+              createdAt: new Date().toISOString(),
+              roundId: currentRoundId,
+              isLastInRound: true,
+            }
+            finalMessages.push(botMessage)
           }
-          finalMessages.push(botMessage)
           
           // 更新会话消息数
           const targetConvId = newConversationId || conversationId
