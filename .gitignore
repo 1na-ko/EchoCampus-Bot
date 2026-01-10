@@ -52,11 +52,19 @@ Thumbs.db
 # =========================
 # 上传文件目录
 uploads/
-
 # 本地配置（如有敏感信息）
-application-local.yml
-application-local.properties
+# 保持对敏感/本地配置文件的忽略，但不要通配忽略整个 resources/ 目录，
+# 因为我们需要将 mapper XML 文件纳入版本控制。
+/backend/src/main/resources/application-local.yml
+/backend/src/main/resources/application-local.properties
 
+# 如果有其它按模式的临时或备份文件需要忽略，可使用更精确的模式
+**/*.bak
+**/*.tmp
+
+# 明确包含后端 mapper 目录及其 XML 文件（反向匹配，用于取消上面的通配忽略）
+!/backend/src/main/resources/mapper/
+!/backend/src/main/resources/mapper/*.xml
 # =========================
 # Docker
 # =========================
