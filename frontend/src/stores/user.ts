@@ -38,6 +38,7 @@ export const useUserStore = defineStore('user', {
 
         localStorage.setItem('token', token)
         localStorage.setItem('userId', userId.toString())
+        localStorage.setItem('userRole', role)
 
         message.success('登录成功')
         return true
@@ -64,6 +65,10 @@ export const useUserStore = defineStore('user', {
       try {
         const res = await authApi.getCurrentUser()
         this.user = res.data
+        // 保存用户角色到localStorage
+        if (res.data.role) {
+          localStorage.setItem('userRole', res.data.role)
+        }
         return true
       } catch (error) {
         console.error('Fetch user error:', error)
@@ -108,6 +113,16 @@ export const useUserStore = defineStore('user', {
       localStorage.removeItem('token')
       localStorage.removeItem('userId')
       message.info('已退出登录')
+    },
+
+    // 清理所有状态（用于退出登录时）
+    clearAll() {
+      this.user = null
+      this.token = null
+      this.isAuthenticated = false
+      localStorage.removeItem('token')
+      localStorage.removeItem('userId')
+      localStorage.removeItem('userRole')
     },
   },
 })

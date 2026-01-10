@@ -24,7 +24,7 @@
           <MessageOutlined />
           <span class="nav-text">智能问答</span>
         </a-menu-item>
-        <a-menu-item key="/knowledge">
+        <a-menu-item v-if="isAdmin" key="/knowledge">
           <DatabaseOutlined />
           <span class="nav-text">知识库</span>
         </a-menu-item>
@@ -83,6 +83,7 @@
 <script setup lang="ts">
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useChatStore } from '@/stores/chat'
 import { useBreakpoints } from '@vueuse/core'
 import {
   MenuUnfoldOutlined,
@@ -97,6 +98,7 @@ import {
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+const chatStore = useChatStore()
 
 const collapsed = ref(false)
 const showMobileSider = ref(false)
@@ -108,6 +110,11 @@ const breakpoints = useBreakpoints({
 })
 
 const isMobile = breakpoints.smaller('mobile')
+
+// 判断是否为管理员
+const isAdmin = computed(() => {
+  return userStore.user?.role === 'ADMIN'
+})
 
 watch(
   () => route.path,
@@ -140,7 +147,9 @@ const handleMenuClick = ({ key }: { key: string }) => {
 }
 
 const handleLogout = () => {
-  userStore.logout()
+  // 清理所有状态
+  userStore.clearAll()
+  chatStore.clearAll()
   router.push('/login')
 }
 

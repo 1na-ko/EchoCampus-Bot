@@ -51,6 +51,14 @@ router.beforeEach((to, _from, next) => {
   } else if (to.path === '/login' && token) {
     next('/chat')
   } else {
+    // 权限控制：非管理员不能访问知识库页面
+    if (to.path === '/knowledge' || to.path.startsWith('/knowledge/')) {
+      const userRole = localStorage.getItem('userRole')
+      if (userRole !== 'ADMIN') {
+        next('/chat')
+        return
+      }
+    }
     next()
   }
 })
