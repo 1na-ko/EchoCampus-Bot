@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.echocampus.bot.mapper.KnowledgeDocMapper">
+
+    <resultMap id="BaseResultMap" type="com.echocampus.bot.entity.KnowledgeDoc">
+        <id column="id" property="id"/>
+        <result column="title" property="title"/>
+        <result column="description" property="description"/>
+        <result column="file_name" property="fileName"/>
+        <result column="file_path" property="filePath"/>
+        <result column="file_size" property="fileSize"/>
+        <result column="file_type" property="fileType"/>
+        <result column="category" property="category"/>
+        <result column="tags" property="tags"/>
+        <result column="status" property="status"/>
+        <result column="vector_count" property="vectorCount"/>
+        <result column="process_status" property="processStatus"/>
+        <result column="process_message" property="processMessage"/>
+        <result column="last_indexed_at" property="lastIndexedAt"/>
+        <result column="created_by" property="createdBy"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectPageByCondition" resultMap="BaseResultMap">
+        SELECT * FROM knowledge_docs
+        WHERE 1=1
+        <if test="category != null and category != ''">
+            AND category = #{category}
+        </if>
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (title LIKE CONCAT('%', #{keyword}, '%') OR description LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="countByCategory" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM knowledge_docs WHERE category = #{category} AND status = 'ACTIVE'
+    </select>
+
+    <update id="updateVectorCount">
+        UPDATE knowledge_docs SET vector_count = #{vectorCount}, updated_at = NOW() WHERE id = #{id}
+    </update>
+
+    <update id="updateProcessStatus">
+        UPDATE knowledge_docs 
+        SET process_status = #{processStatus}, process_message = #{processMessage}, updated_at = NOW() 
+        WHERE id = #{id}
+    </update>
+
+</mapper>

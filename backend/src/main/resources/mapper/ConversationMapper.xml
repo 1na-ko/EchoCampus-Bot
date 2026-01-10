@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.echocampus.bot.mapper.ConversationMapper">
+
+    <resultMap id="BaseResultMap" type="com.echocampus.bot.entity.Conversation">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="title" property="title"/>
+        <result column="message_count" property="messageCount"/>
+        <result column="status" property="status"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectPageByUserId" resultMap="BaseResultMap">
+        SELECT * FROM conversations
+        WHERE user_id = #{userId}
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        ORDER BY updated_at DESC
+    </select>
+
+    <select id="selectRecentByUserId" resultMap="BaseResultMap">
+        SELECT * FROM conversations
+        WHERE user_id = #{userId} AND status = 'ACTIVE'
+        ORDER BY updated_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 查询指定日期之前的软删除会话ID列表 -->
+    <select id="selectDeletedConversationIdsBefore" resultType="java.lang.Long">
+        SELECT id FROM conversations
+        WHERE status = 'DELETED'
+        AND updated_at &lt; #{beforeDate}
+    </select>
+
+    <!-- 批量物理删除会话 -->
+    <delete id="physicalDeleteByIds">
+        DELETE FROM conversations
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>
