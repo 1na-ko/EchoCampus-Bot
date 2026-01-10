@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.echocampus.bot.mapper.KnowledgeChunkMapper">
+
+    <resultMap id="BaseResultMap" type="com.echocampus.bot.entity.KnowledgeChunk">
+        <id column="id" property="id"/>
+        <result column="doc_id" property="docId"/>
+        <result column="chunk_index" property="chunkIndex"/>
+        <result column="chunk_type" property="chunkType"/>
+        <result column="content" property="content"/>
+        <result column="content_hash" property="contentHash"/>
+        <result column="vector_id" property="vectorId"/>
+        <result column="page_number" property="pageNumber"/>
+        <result column="metadata" property="metadata" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result column="token_count" property="tokenCount"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <select id="selectByDocId" resultMap="BaseResultMap">
+        SELECT * FROM knowledge_chunks WHERE doc_id = #{docId} ORDER BY chunk_index ASC
+    </select>
+
+    <select id="selectByVectorIds" resultMap="BaseResultMap">
+        SELECT * FROM knowledge_chunks WHERE vector_id IN
+        <foreach collection="vectorIds" item="vectorId" open="(" separator="," close=")">
+            #{vectorId}
+        </foreach>
+    </select>
+
+    <delete id="deleteByDocId">
+        DELETE FROM knowledge_chunks WHERE doc_id = #{docId}
+    </delete>
+
+    <select id="selectByContentHash" resultMap="BaseResultMap">
+        SELECT * FROM knowledge_chunks WHERE content_hash = #{contentHash} LIMIT 1
+    </select>
+
+</mapper>

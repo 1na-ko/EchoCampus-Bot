@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.echocampus.bot.mapper.KnowledgeCategoryMapper">
+
+    <resultMap id="BaseResultMap" type="com.echocampus.bot.entity.KnowledgeCategory">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="description" property="description"/>
+        <result column="parent_id" property="parentId"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="doc_count" property="docCount"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectTopLevel" resultMap="BaseResultMap">
+        SELECT * FROM knowledge_categories WHERE parent_id IS NULL ORDER BY sort_order ASC
+    </select>
+
+    <select id="selectByParentId" resultMap="BaseResultMap">
+        SELECT * FROM knowledge_categories WHERE parent_id = #{parentId} ORDER BY sort_order ASC
+    </select>
+
+    <select id="selectByName" resultMap="BaseResultMap">
+        SELECT * FROM knowledge_categories WHERE name = #{name} LIMIT 1
+    </select>
+
+</mapper>

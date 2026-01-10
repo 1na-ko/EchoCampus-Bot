@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.echocampus.bot.mapper.MessageMapper">
+
+    <resultMap id="BaseResultMap" type="com.echocampus.bot.entity.Message">
+        <id column="id" property="id"/>
+        <result column="conversation_id" property="conversationId"/>
+        <result column="parent_message_id" property="parentMessageId"/>
+        <result column="sender_type" property="senderType"/>
+        <result column="content" property="content"/>
+        <result column="token_count" property="tokenCount"/>
+        <result column="metadata" property="metadata" typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <select id="selectByConversationId" resultMap="BaseResultMap">
+        SELECT * FROM messages
+        WHERE conversation_id = #{conversationId}
+        ORDER BY created_at ASC
+    </select>
+
+    <select id="selectRecentByConversationId" resultMap="BaseResultMap">
+        SELECT * FROM messages
+        WHERE conversation_id = #{conversationId}
+        ORDER BY created_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="countByConversationId" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM messages WHERE conversation_id = #{conversationId}
+    </select>
+
+    <!-- 自定义更新方法，处理 metadata 的 JSONB 类型 -->
+    <update id="updateContentAndMetadata">
+        UPDATE messages
+        SET content = #{content},
+            metadata = #{metadata, typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler}::jsonb
+        WHERE id = #{id}
+    </update>
+
+    <!-- 批量物理删除指定会话的消息 -->
+    <delete id="physicalDeleteByConversationIds">
+        DELETE FROM messages
+        WHERE conversation_id IN
+        <foreach collection="conversationIds" item="conversationId" open="(" separator="," close=")">
+            #{conversationId}
+        </foreach>
+    </delete>
+
+</mapper>
