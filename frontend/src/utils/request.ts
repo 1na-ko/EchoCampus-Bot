@@ -77,6 +77,9 @@ service.interceptors.response.use(
         case 500:
           antMessage.error(data?.message || '服务器错误')
           break
+        case 504:
+          antMessage.error(data?.message || '系统繁忙，请稍后再试')
+          break
         default:
           antMessage.error(data?.message || '请求失败')
       }
@@ -148,9 +151,31 @@ export function createSSERequest(
     body: JSON.stringify(data),
     signal: controller.signal,
   })
-    .then(response => {
+    .then(async response => {
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        let errorMessage = `HTTP error! status: ${response.status}`
+        
+        try {
+          const errorData = await response.json()
+          if (errorData.message) {
+            errorMessage = errorData.message
+          }
+        } catch (e) {
+          // 如果无法解析JSON，使用默认错误消息
+          switch (response.status) {
+            case 504:
+              errorMessage = '系统繁忙，请稍后再试'
+              break
+            case 429:
+              errorMessage = '请求过于频繁，请稍后再试'
+              break
+            case 503:
+              errorMessage = '服务暂不可用'
+              break
+          }
+        }
+        
+        throw new Error(errorMessage)
       }
       
       const reader = response.body?.getReader()

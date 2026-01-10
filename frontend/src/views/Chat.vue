@@ -346,7 +346,9 @@ const hasCurrentRoundBotMessage = () => {
 
 const handleNewChat = () => {
   currentConvId.value = undefined
-  chatStore.clearCurrentConversation()
+  // 只清空当前对话状态，不取消其他对话的 SSE 连接
+  chatStore.currentConversation = null
+  chatStore.newConversationStreamState = null
 }
 
 const selectConversation = async (id: number) => {

@@ -25,6 +25,7 @@ public enum ResultCode {
     // 服务端错误 5xx
     ERROR(500, "服务器内部错误"),
     SERVICE_UNAVAILABLE(503, "服务暂不可用"),
+    SYSTEM_BUSY(504, "系统繁忙，请稍后再试"),
 
     // 业务错误 1xxx
     USER_NOT_FOUND(1001, "用户不存在"),

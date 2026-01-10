@@ -222,17 +222,14 @@ export const useChatStore = defineStore('chat', {
       let messages: Message[]
       
       if (conversationId) {
-        // 已有对话：取消该对话之前的请求
+        // 已有对话：获取流式状态和消息列表
         streamState = this._getOrCreateStreamState(conversationId)
         messages = this._getOrCreateMessages(conversationId)
-        if (streamState.abortController) {
-          streamState.abortController.abort()
-        }
+        // 注意：不再取消该对话之前的请求，允许多个请求并发
+        // 每个对话可以有多个并发的流式请求
       } else {
         // 新对话：创建临时流式状态
-        if (this.newConversationStreamState?.abortController) {
-          this.newConversationStreamState.abortController.abort()
-        }
+        // 注意：不再取消新对话之前的请求，允许多个新对话并发
         this.newConversationStreamState = this._createStreamState()
         streamState = this.newConversationStreamState
         messages = []
@@ -410,6 +407,16 @@ export const useChatStore = defineStore('chat', {
         
         onError: (error) => {
           console.error('Stream error:', error)
+          
+          // 如果是 AbortError，说明是被主动取消的，不显示错误
+          if (error.name === 'AbortError') {
+            streamState.processingStage = 'idle'
+            streamState.processingStatus = ''
+            streamState.isSending = false
+            streamState.abortController = null
+            return
+          }
+          
           streamState.processingStage = 'error'
           streamState.processingStatus = `错误: ${error}`
           streamState.isSending = false
@@ -418,12 +425,23 @@ export const useChatStore = defineStore('chat', {
           const finalMessages = newConversationId ? this._getOrCreateMessages(newConversationId) : messages
           finalMessages.pop()
           
-          antMessage.error('发送消息失败: ' + error)
+          // 根据错误类型显示不同的提示
+          const errorMessage = error.toString()
+          if (errorMessage.includes('系统繁忙') || errorMessage.includes('504')) {
+            antMessage.warning('系统繁忙，请稍后再试')
+          } else if (errorMessage.includes('请求过于频繁') || errorMessage.includes('429')) {
+            antMessage.warning('请求过于频繁，请稍后再试')
+          } else if (errorMessage.includes('SSE连接数已达上限')) {
+            antMessage.warning('连接数已达上限，请稍后再试')
+          } else {
+            antMessage.error('发送消息失败: ' + error)
+          }
           
           // 清理状态
           setTimeout(() => {
             streamState.processingStage = 'idle'
             streamState.processingStatus = ''
+            streamState.abortController = null
           }, 3000)
         },
       })
@@ -589,13 +607,8 @@ export const useChatStore = defineStore('chat', {
 
     // 清空当前会话
     clearCurrentConversation() {
-      // 取消当前对话的流式请求（如果有）
-      if (this.currentConversation) {
-        this.cancelStream(this.currentConversation.id)
-      } else {
-        this.cancelStream()
-      }
-      
+      // 注意：这个方法只清空当前对话状态，不取消任何 SSE 连接
+      // 每个对话的 SSE 连接应该独立运行，互不干扰
       this.currentConversation = null
       this.newConversationStreamState = null
     },
