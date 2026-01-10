@@ -57,31 +57,31 @@
 
 #### 前端层 (Presentation Layer)
 - **框架**: Vue.js 3 + TypeScript
-- **UI组件**: Element Plus / Ant Design Vue
+- **UI组件**: Ant Design Vue
 - **状态管理**: Pinia
 - **HTTP客户端**: Axios
 - **特色功能**: 响应式设计、Markdown渲染、代码高亮
 
 #### 后端层 (Business Logic Layer)
-- **框架**: Spring Boot 4.0.1
+- **框架**: Spring Boot 3.2.1
 - **ORM框架**: MyBatis-Plus
 - **数据库连接池**: Druid
 - **API文档**: Swagger/OpenAPI
 - **安全框架**: Spring Security (可选)
 - **依赖管理**: Maven
 - **文档解析**: LangChain4j + Apache POI + Apache PDFBox
-  - LangChain4j: 智能文本切块(递归分割、语义保持)
-  - Apache PDFBox: PDF文档解析
-  - Apache POI: Word/PowerPoint文档解析
-  - Flexmark: Markdown文档解析
-  - Jsoup: HTML解析
+    - LangChain4j: 智能文本切块(递归分割、语义保持)
+    - Apache PDFBox: PDF文档解析
+    - Apache POI: Word/PowerPoint/Excel文档解析
+    - Flexmark: Markdown文档解析
+    - Jsoup: HTML解析
 
 #### 数据存储层 (Data Layer)
-- **关系型数据库**: PostgreSQL 18.1
-  - 存储用户信息、对话历史、知识库元数据
-- **向量数据库**: Milvus v2.6.8
-  - 存储知识库文档的向量化表示
-  - 支持高效的相似度检索
+- **关系型数据库**: PostgreSQL 15
+    - 存储用户信息、对话历史、知识库元数据
+- **向量数据库**: Milvus v2.3.4
+    - 存储知识库文档的向量化表示
+    - 支持高效的相似度检索
 
 #### AI服务层 (AI Service Layer)
 - **文本嵌入**: 阿里云百炼平台 Qwen3-Embedding (text-embedding-v3)
@@ -594,131 +594,126 @@ it-qabot/
 
 ```xml
 <dependencies>
-    <!-- Spring Boot Starter -->
+    <!-- Spring Boot Starters (3.2.1) -->
     <dependency>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-web</artifactId>
     </dependency>
-    
-    <!-- Spring Boot Test -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
     <dependency>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-test</artifactId>
         <scope>test</scope>
     </dependency>
-    
+
     <!-- MyBatis-Plus -->
     <dependency>
         <groupId>com.baomidou</groupId>
-        <artifactId>mybatis-plus-boot-starter</artifactId>
-        <version>3.5.3</version>
+        <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+        <version>3.5.5</version>
     </dependency>
-    
-    <!-- PostgreSQL -->
+
+    <!-- 数据库与连接池 -->
     <dependency>
         <groupId>org.postgresql</groupId>
         <artifactId>postgresql</artifactId>
         <scope>runtime</scope>
     </dependency>
-    
-    <!-- Druid连接池 -->
     <dependency>
         <groupId>com.alibaba</groupId>
-        <artifactId>druid-spring-boot-starter</artifactId>
-        <version>1.2.16</version>
+        <artifactId>druid-spring-boot-3-starter</artifactId>
+        <version>1.2.20</version>
     </dependency>
-    
-    <!-- Milvus Java SDK -->
+
+    <!-- 向量数据库 -->
     <dependency>
         <groupId>io.milvus</groupId>
         <artifactId>milvus-sdk-java</artifactId>
         <version>2.3.4</version>
     </dependency>
-    
-    <!-- HTTP客户端 -->
+
+    <!-- RAG相关 -->
     <dependency>
-        <groupId>org.apache.httpcomponents.client5</groupId>
-        <artifactId>httpclient5</artifactId>
+        <groupId>dev.langchain4j</groupId>
+        <artifactId>langchain4j</artifactId>
+        <version>0.28.0</version>
     </dependency>
-    
-    <!-- JSON处理 -->
-    <dependency>
-        <groupId>com.fasterxml.jackson.core</groupId>
-        <artifactId>jackson-databind</artifactId>
-    </dependency>
-    
-    <!-- 工具类 -->
-    <dependency>
-        <groupId>org.apache.commons</groupId>
-        <artifactId>commons-lang3</artifactId>
-    </dependency>
-    
-    <dependency>
-        <groupId>commons-io</groupId>
-        <artifactId>commons-io</artifactId>
-        <version>2.11.0</version>
-    </dependency>
-    
+
     <!-- 文档解析 -->
     <dependency>
         <groupId>org.apache.pdfbox</groupId>
         <artifactId>pdfbox</artifactId>
-        <version>2.0.29</version>
+        <version>3.0.1</version>
     </dependency>
-    
-    <!-- LangChain4j核心 -->
     <dependency>
-        <groupId>dev.langchain4j</groupId>
-        <artifactId>langchain4j</artifactId>
-        <version>0.27.1</version>
+        <groupId>org.apache.poi</groupId>
+        <artifactId>poi</artifactId>
+        <version>5.2.5</version>
     </dependency>
-    
-    <!-- LangChain4j文档分割器 -->
-    <dependency>
-        <groupId>dev.langchain4j</groupId>
-        <artifactId>langchain4j-document-splitter</artifactId>
-        <version>0.27.1</version>
-    </dependency>
-    
-    <!-- Word/PowerPoint文档解析 -->
     <dependency>
         <groupId>org.apache.poi</groupId>
         <artifactId>poi-ooxml</artifactId>
-        <version>5.2.3</version>
+        <version>5.2.5</version>
     </dependency>
-    
     <dependency>
         <groupId>org.apache.poi</groupId>
-        <artifactId>poi-ooxml-full</artifactId>
-        <version>5.2.3</version>
+        <artifactId>poi-scratchpad</artifactId>
+        <version>5.2.5</version>
     </dependency>
-    
-    <!-- Markdown解析 -->
     <dependency>
         <groupId>com.vladsch.flexmark</groupId>
         <artifactId>flexmark-all</artifactId>
         <version>0.64.8</version>
     </dependency>
-    
-    <!-- HTML解析 -->
     <dependency>
         <groupId>org.jsoup</groupId>
         <artifactId>jsoup</artifactId>
-        <version>1.16.1</version>
+        <version>1.17.2</version>
     </dependency>
-    
-    <!-- Swagger API文档 -->
+
+    <!-- HTTP客户端 -->
+    <dependency>
+        <groupId>com.squareup.okhttp3</groupId>
+        <artifactId>okhttp</artifactId>
+        <version>4.12.0</version>
+    </dependency>
+
+    <!-- API文档与JWT -->
     <dependency>
         <groupId>com.github.xiaoymin</groupId>
-        <artifactId>knife4j-spring-boot-starter</artifactId>
-        <version>4.3.0</version>
+        <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+        <version>4.4.0</version>
     </dependency>
-    
-    <!-- JWT (可选) -->
     <dependency>
         <groupId>io.jsonwebtoken</groupId>
         <artifactId>jjwt-api</artifactId>
-        <version>0.11.5</version>
+        <version>0.12.3</version>
+    </dependency>
+    <dependency>
+        <groupId>io.jsonwebtoken</groupId>
+        <artifactId>jjwt-impl</artifactId>
+        <version>0.12.3</version>
+        <scope>runtime</scope>
+    </dependency>
+    <dependency>
+        <groupId>io.jsonwebtoken</groupId>
+        <artifactId>jjwt-jackson</artifactId>
+        <version>0.12.3</version>
+        <scope>runtime</scope>
+    </dependency>
+
+    <!-- 常用工具 -->
+    <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>commons-io</groupId>
+        <artifactId>commons-io</artifactId>
+        <version>2.15.1</version>
     </dependency>
 </dependencies>
 ```
@@ -778,20 +773,25 @@ it-qabot-frontend/
 ```json
 {
   "dependencies": {
-    "vue": "^3.3.4",
-    "vue-router": "^4.2.4",
-    "pinia": "^2.1.6",
-    "axios": "^1.5.0",
-    "element-plus": "^2.3.9",
-    "@element-plus/icons-vue": "^2.1.0",
-    "marked": "^7.0.5",
-    "highlight.js": "^11.8.0"
+        "vue": "^3.4.0",
+        "vue-router": "^4.2.5",
+        "pinia": "^2.1.7",
+        "axios": "^1.6.5",
+        "ant-design-vue": "^4.1.1",
+        "@ant-design/icons-vue": "^7.0.1",
+        "marked": "^11.1.1",
+        "highlight.js": "^11.9.0",
+        "dayjs": "^1.11.10",
+        "@vueuse/core": "^10.7.2"
   },
   "devDependencies": {
-    "@types/node": "^20.5.0",
-    "typescript": "^5.1.6",
-    "vite": "^4.4.5",
-    "vue-tsc": "^1.8.5"
+        "@types/node": "^20.11.5",
+        "typescript": "^5.3.3",
+        "vite": "^5.0.11",
+        "vue-tsc": "^1.8.27",
+        "@vitejs/plugin-vue": "^5.0.3",
+        "unplugin-vue-components": "^0.26.0",
+        "unplugin-auto-import": "^0.17.3"
   }
 }
 ```
