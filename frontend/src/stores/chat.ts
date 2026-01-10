@@ -599,5 +599,14 @@ export const useChatStore = defineStore('chat', {
       this.currentConversation = null
       this.newConversationStreamState = null
     },
+
+    // 清理所有对话数据（用于退出登录时）
+    clearAll() {
+      this.conversations = []
+      this.currentConversation = null
+      this.messagesMap.clear()
+      this.streamStatesMap.clear()
+      this.newConversationStreamState = null
+    },
   },
 })
