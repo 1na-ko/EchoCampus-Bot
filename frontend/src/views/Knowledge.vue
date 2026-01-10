@@ -317,7 +317,7 @@
 </template>
 
 <script setup lang="ts">
-import { Modal, Empty, message } from 'ant-design-vue'
+import { Modal, message } from 'ant-design-vue'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import type { KnowledgeDoc, KnowledgeDocRequest } from '@/types'
 import dayjs from 'dayjs'
@@ -336,7 +336,6 @@ import {
   FilePptOutlined,
   FileExcelOutlined,
   SearchOutlined,
-  CloudUploadOutlined,
   CheckCircleFilled,
   SyncOutlined,
   CloseCircleFilled,
@@ -451,7 +450,7 @@ const handleUpload = async () => {
 }
 
 // 进度完成处理
-const handleUploadCompleted = (docId: number) => {
+const handleUploadCompleted = (_docId: number) => {
   progressCompleted.value = true
   message.success('文档处理完成！')
   // 刷新文档列表
@@ -459,7 +458,7 @@ const handleUploadCompleted = (docId: number) => {
 }
 
 // 进度失败处理
-const handleUploadFailed = (docId: number, error: string) => {
+const handleUploadFailed = (_docId: number, error: string) => {
   progressFailed.value = true
   message.error(`文档处理失败: ${error}`)
   // 刷新文档列表
@@ -587,7 +586,7 @@ const handleReindexCompleted = () => {
    fetchDocuments()
 }
 
-const handleReindexFailed = (docId: number, msg: string) => {
+const handleReindexFailed = (_docId: number, msg: string) => {
    message.error(`索引重建失败: ${msg}`)
    showReindexProgress.value = true
    reindexFailed.value = true

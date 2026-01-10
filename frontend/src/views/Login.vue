@@ -114,7 +114,8 @@ import { h } from 'vue'
 import { useRouter } from 'vue-router'
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons-vue'
 import { useUserStore } from '@/stores/user'
-import type { LoginRequest, User } from '@/types'
+import type { LoginRequest } from '@/types'
+import type { RuleObject } from 'ant-design-vue/es/form'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -122,12 +123,22 @@ const userStore = useUserStore()
 const activeTab = ref('login')
 const loading = ref(false)
 
+interface RegisterForm {
+  username: string
+  email: string
+  password: string
+  confirmPassword: string
+  nickname: string
+  role: string
+  status: string
+}
+
 const loginForm = reactive<LoginRequest>({
   username: '',
   password: '',
 })
 
-const registerForm = reactive<Partial<User> & { confirmPassword?: string }>({
+const registerForm = reactive<RegisterForm>({
   username: '',
   email: '',
   password: '',
@@ -142,14 +153,14 @@ const loginRules = {
   password: [{ required: true, message: '请输入密码' }],
 }
 
-const registerRules = {
+const registerRules: Record<string, RuleObject[]> = {
   username: [
     { required: true, message: '请输入用户名' },
     { min: 3, max: 50, message: '用户名长度3-50字符' },
   ],
   email: [
     { required: true, message: '请输入邮箱' },
-    { type: 'email', message: '请输入有效的邮箱地址' },
+    { type: 'email' as const, message: '请输入有效的邮箱地址' },
   ],
   password: [
     { required: true, message: '请输入密码' },
@@ -158,7 +169,7 @@ const registerRules = {
   confirmPassword: [
     { required: true, message: '请再次输入密码' },
     {
-      validator: (_: any, value: string) => {
+      validator: (_: RuleObject, value: string) => {
         if (value !== registerForm.password) {
           return Promise.reject('两次输入的密码不一致')
         }

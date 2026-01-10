@@ -6,6 +6,7 @@ import { AntDesignVueResolver } from 'unplugin-vue-components/resolvers'
 import AutoImport from 'unplugin-auto-import/vite'
 
 export default defineConfig({
+  base: '/student4/',  // 根据你的部署路径修改，如果是 student1 就改为 /student1/
   plugins: [
     vue(),
     AutoImport({
