@@ -11,8 +11,10 @@ import com.echocampus.bot.mapper.ConversationMapper;
 import com.echocampus.bot.mapper.MessageMapper;
 import com.echocampus.bot.service.ChatService;
 import com.echocampus.bot.service.RagService;
+import com.echocampus.bot.service.EnhancedRagService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +37,10 @@ public class ChatServiceImpl implements ChatService {
     private final ConversationMapper conversationMapper;
     private final MessageMapper messageMapper;
     private final RagService ragService;
+    private final EnhancedRagService enhancedRagService;
+    
+    @Value("${rag.enhanced-mode:true}")
+    private boolean enhancedMode;
 
     @Override
     @Transactional
@@ -69,9 +75,17 @@ public class ChatServiceImpl implements ChatService {
                 .sorted((a, b) -> a.getCreatedAt().compareTo(b.getCreatedAt()))
                 .collect(Collectors.toList());
         
-        // 4. 调用RAG服务生成回复（携带历史消息）
-        RagService.RagResponse ragResponse = ragService.answer(
-                request.getMessage(), recentMessages, userId, conversation.getId());
+        // 4. 调用RAG服务生成回复（根据配置选择增强模式或传统模式）
+        RagService.RagResponse ragResponse;
+        if (enhancedMode) {
+            // 增强模式：支持AI自主判断和上下文检索
+            ragResponse = enhancedRagService.answerWithAutoRetrieval(
+                    request.getMessage(), recentMessages, userId, conversation.getId());
+        } else {
+            // 传统模式：总是检索知识库
+            ragResponse = ragService.answer(
+                    request.getMessage(), recentMessages, userId, conversation.getId());
+        }
                 
         String aiAnswer = ragResponse.answer();
         List<ChatResponse.SourceDoc> sources = ragResponse.sources().stream()
@@ -165,39 +179,112 @@ public class ChatServiceImpl implements ChatService {
         StringBuilder fullAnswer = new StringBuilder();
         List<ChatResponse.SourceDoc> allSourceDocs = new ArrayList<>();
         
-        // 7. 调用RAG流式服务
-        String answer = ragService.answerStream(
-                request.getMessage(),
-                recentMessages,
-                userId,
-                conversationId,
-                // 状态消费者
-                status -> responseConsumer.accept(
-                        StreamChatResponse.status(conversationId, messageId, status)),
-                // 来源消费者
-                sources -> {
-                    List<ChatResponse.SourceDoc> sourceDocs = sources.stream()
-                            .map(s -> ChatResponse.SourceDoc.builder()
-                                    .docId(s.docId())
-                                    .title(s.docTitle())
-                                    .content(s.content())
-                                    .similarity(s.score())
-                                    .build())
-                            .collect(Collectors.toList());
-                    allSourceDocs.addAll(sourceDocs);
-                    responseConsumer.accept(
-                            StreamChatResponse.sources(conversationId, messageId, sourceDocs));
-                },
-                // 内容消费者
-                chunk -> {
-                    fullAnswer.append(chunk);
-                    responseConsumer.accept(
-                            StreamChatResponse.content(conversationId, messageId, chunk));
-                }
-        );
+        // 用于追踪当前正在流式输出的消息ID（支持多条消息）
+        final Long[] currentMessageId = {messageId};
+        final Long[] currentParentId = {userMessage.getId()};
         
-        // 8. 更新AI消息内容和元数据
-        // 保存 metadata（包括 sources）
+        // 7. 调用RAG流式服务（根据配置选择增强模式或传统模式）
+        String answer;
+        if (enhancedMode) {
+            // 增强模式：支持AI自主判断和上下文检索
+            answer = enhancedRagService.answerWithAutoRetrievalStream(
+                    request.getMessage(),
+                    recentMessages,
+                    userId,
+                    conversationId,
+                    // 状态消费者
+                    status -> {
+                        // 检测到新消息标记：保存当前消息并创建新消息
+                        if ("__NEW_MESSAGE__".equals(status)) {
+                            // 保存当前流式内容到当前消息
+                            if (fullAnswer.length() > 0) {
+                                messageMapper.updateContentAndMetadata(
+                                    currentMessageId[0], 
+                                    fullAnswer.toString(), 
+                                    Map.of("isIntermediate", true)
+                                );
+                                
+                                // 创建新的AI消息
+                                Message newBotMessage = new Message();
+                                newBotMessage.setConversationId(conversationId);
+                                newBotMessage.setParentMessageId(currentParentId[0]);
+                                newBotMessage.setSenderType("BOT");
+                                newBotMessage.setContent("");
+                                messageMapper.insert(newBotMessage);
+                                
+                                // 更新当前消息ID和父消息ID
+                                currentParentId[0] = currentMessageId[0];
+                                currentMessageId[0] = newBotMessage.getId();
+                                
+                                // 清空fullAnswer，开始收集新消息内容
+                                fullAnswer.setLength(0);
+                            }
+                            // 同时也要发送给前端，让前端也创建新消息
+                            responseConsumer.accept(
+                                StreamChatResponse.status(conversationId, currentMessageId[0], status));
+                        } else {
+                            responseConsumer.accept(
+                                StreamChatResponse.status(conversationId, currentMessageId[0], status));
+                        }
+                    },
+                    // 来源消费者
+                    sources -> {
+                        List<ChatResponse.SourceDoc> sourceDocs = sources.stream()
+                                .map(s -> ChatResponse.SourceDoc.builder()
+                                        .docId(s.docId())
+                                        .title(s.docTitle())
+                                        .content(s.content())
+                                        .similarity(s.score())
+                                        .build())
+                                .collect(Collectors.toList());
+                        // 累加到全局列表
+                        allSourceDocs.addAll(sourceDocs);
+                        // 发送累加后的所有sources（而不是只发送新增的）
+                        responseConsumer.accept(
+                                StreamChatResponse.sources(conversationId, currentMessageId[0], new ArrayList<>(allSourceDocs)));
+                    },
+                    // 内容消费者
+                    chunk -> {
+                        fullAnswer.append(chunk);
+                        responseConsumer.accept(
+                                StreamChatResponse.content(conversationId, currentMessageId[0], chunk));
+                    }
+            );
+        } else {
+            // 传统模式：总是检索知识库（不支持多条消息）
+            answer = ragService.answerStream(
+                    request.getMessage(),
+                    recentMessages,
+                    userId,
+                    conversationId,
+                    // 状态消费者
+                    status -> responseConsumer.accept(
+                            StreamChatResponse.status(conversationId, currentMessageId[0], status)),
+                    // 来源消费者
+                    sources -> {
+                        List<ChatResponse.SourceDoc> sourceDocs = sources.stream()
+                                .map(s -> ChatResponse.SourceDoc.builder()
+                                        .docId(s.docId())
+                                        .title(s.docTitle())
+                                        .content(s.content())
+                                        .similarity(s.score())
+                                        .build())
+                                .collect(Collectors.toList());
+                        allSourceDocs.addAll(sourceDocs);
+                        responseConsumer.accept(
+                                StreamChatResponse.sources(conversationId, currentMessageId[0], sourceDocs));
+                    },
+                    // 内容消费者
+                    chunk -> {
+                        fullAnswer.append(chunk);
+                        responseConsumer.accept(
+                                StreamChatResponse.content(conversationId, currentMessageId[0], chunk));
+                    }
+            );
+        }
+        
+        // 8. 更新最后一条AI消息的内容和元数据
+        // 保存 metadata（包括所有累加的 sources）
         Map<String, Object> metadata = new HashMap<>();
         List<Map<String, Object>> sourcesData = allSourceDocs.stream()
                 .map(source -> {
@@ -210,15 +297,16 @@ public class ChatServiceImpl implements ChatService {
                 })
                 .collect(Collectors.toList());
         metadata.put("sources", sourcesData);
+        metadata.put("isLastInRound", true);
         
         // 使用自定义方法更新，处理 JSONB 类型
-        messageMapper.updateContentAndMetadata(botMessage.getId(), fullAnswer.toString(), metadata);
+        messageMapper.updateContentAndMetadata(currentMessageId[0], fullAnswer.toString(), metadata);
         
         // 9. 发送完成事件
         long responseTime = System.currentTimeMillis() - startTime;
         responseConsumer.accept(StreamChatResponse.done(
                 conversationId,
-                messageId,
+                currentMessageId[0],
                 ChatResponse.TokenUsage.builder()
                         .promptTokens(0)
                         .completionTokens(0)

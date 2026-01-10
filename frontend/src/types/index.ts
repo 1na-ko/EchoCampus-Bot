@@ -64,6 +64,8 @@ export interface Message {
   tokenCount?: number
   metadata?: Record<string, any>
   createdAt: string
+  roundId?: number // 同一轮对话的标识
+  isLastInRound?: boolean // 是否是该轮最后一条消息
 }
 
 export interface ChatRequest {
