@@ -219,7 +219,16 @@ export const knowledgeApi = {
     
     eventSource.onerror = (error) => {
       console.error('SSE连接错误:', error)
-      callbacks.onError?.('连接错误')
+      
+      // 根据EventSource的状态判断错误类型
+      if (eventSource.readyState === EventSource.CLOSED) {
+        callbacks.onError?.('连接已关闭')
+      } else if (eventSource.readyState === EventSource.CONNECTING) {
+        callbacks.onError?.('正在重新连接...')
+      } else {
+        callbacks.onError?.('连接错误')
+      }
+      
       eventSource.close()
     }
     

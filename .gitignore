@@ -94,3 +94,5 @@ dist/
 resources/
 *.bak
 *.tmp
+
+.trae

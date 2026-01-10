@@ -29,19 +29,23 @@ public class LlmServiceImpl implements LlmService {
     private final AiConfig aiConfig;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    private OkHttpClient httpClient;
+    private volatile OkHttpClient httpClient;
 
     /**
-     * 获取HTTP客户端（延迟初始化）
+     * 获取HTTP客户端（延迟初始化，线程安全）
      */
     private OkHttpClient getHttpClient() {
         if (httpClient == null) {
-            int timeout = aiConfig.getLlm().getTimeout();
-            httpClient = new OkHttpClient.Builder()
-                    .connectTimeout(30, TimeUnit.SECONDS)
-                    .readTimeout(timeout, TimeUnit.SECONDS)
-                    .writeTimeout(30, TimeUnit.SECONDS)
-                    .build();
+            synchronized (this) {
+                if (httpClient == null) {
+                    int timeout = aiConfig.getLlm().getTimeout();
+                    httpClient = new OkHttpClient.Builder()
+                            .connectTimeout(30, TimeUnit.SECONDS)
+                            .readTimeout(timeout, TimeUnit.SECONDS)
+                            .writeTimeout(30, TimeUnit.SECONDS)
+                            .build();
+                }
+            }
         }
         return httpClient;
     }

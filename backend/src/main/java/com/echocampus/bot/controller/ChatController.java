@@ -1,6 +1,9 @@
 package com.echocampus.bot.controller;
 
 import com.echocampus.bot.common.Result;
+import com.echocampus.bot.common.ResultCode;
+import com.echocampus.bot.common.exception.BusinessException;
+import com.echocampus.bot.config.RateLimitConfig;
 import com.echocampus.bot.dto.request.ChatRequest;
 import com.echocampus.bot.dto.response.ChatResponse;
 import com.echocampus.bot.dto.response.StreamChatResponse;
@@ -20,8 +23,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Executor;
 
 /**
  * 聊天控制器
@@ -35,7 +37,8 @@ public class ChatController {
 
     private final ChatService chatService;
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final ExecutorService executorService = Executors.newCachedThreadPool();
+    private final Executor sseExecutor;
+    private final RateLimitConfig.RateLimiter rateLimiter;
 
     @Operation(summary = "发送消息", description = "发送消息并获取AI回复")
     @PostMapping("/message")
@@ -52,11 +55,16 @@ public class ChatController {
             @Parameter(description = "用户ID", required = true) @RequestHeader(value = "X-User-Id", defaultValue = "1") Long userId,
             @Valid @RequestBody ChatRequest request) {
         
+        // 限流检查
+        if (!rateLimiter.tryAcquire(userId)) {
+            throw new BusinessException(ResultCode.SYSTEM_BUSY, "系统繁忙，请稍后再试");
+        }
+        
         // 创建SSE发射器，超时时间5分钟
         SseEmitter emitter = new SseEmitter(300000L);
         
         // 异步执行流式响应
-        executorService.execute(() -> {
+        sseExecutor.execute(() -> {
             try {
                 chatService.sendMessageStream(userId, request, streamResponse -> {
                     try {
@@ -85,12 +93,19 @@ public class ChatController {
         });
         
         // 设置完成和超时回调
-        emitter.onCompletion(() -> log.debug("SSE连接完成"));
+        emitter.onCompletion(() -> {
+            log.debug("SSE连接完成");
+            rateLimiter.release(userId);
+        });
         emitter.onTimeout(() -> {
             log.warn("SSE连接超时");
             emitter.complete();
+            rateLimiter.release(userId);
         });
-        emitter.onError(e -> log.error("SSE连接错误: {}", e.getMessage()));
+        emitter.onError(e -> {
+            log.error("SSE连接错误: {}", e.getMessage());
+            rateLimiter.release(userId);
+        });
         
         return emitter;
     }

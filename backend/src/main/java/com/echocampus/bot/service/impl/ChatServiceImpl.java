@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -179,9 +180,9 @@ public class ChatServiceImpl implements ChatService {
         StringBuilder fullAnswer = new StringBuilder();
         List<ChatResponse.SourceDoc> allSourceDocs = new ArrayList<>();
         
-        // 用于追踪当前正在流式输出的消息ID（支持多条消息）
-        final Long[] currentMessageId = {messageId};
-        final Long[] currentParentId = {userMessage.getId()};
+        // 用于追踪当前正在流式输出的消息ID（支持多条消息，线程安全）
+        final AtomicLong currentMessageId = new AtomicLong(messageId);
+        final AtomicLong currentParentId = new AtomicLong(userMessage.getId());
         
         // 7. 调用RAG流式服务（根据配置选择增强模式或传统模式）
         String answer;
@@ -199,7 +200,7 @@ public class ChatServiceImpl implements ChatService {
                             // 保存当前流式内容到当前消息
                             if (fullAnswer.length() > 0) {
                                 messageMapper.updateContentAndMetadata(
-                                    currentMessageId[0], 
+                                    currentMessageId.get(), 
                                     fullAnswer.toString(), 
                                     Map.of("isIntermediate", true)
                                 );
@@ -207,24 +208,24 @@ public class ChatServiceImpl implements ChatService {
                                 // 创建新的AI消息
                                 Message newBotMessage = new Message();
                                 newBotMessage.setConversationId(conversationId);
-                                newBotMessage.setParentMessageId(currentParentId[0]);
+                                newBotMessage.setParentMessageId(currentParentId.get());
                                 newBotMessage.setSenderType("BOT");
                                 newBotMessage.setContent("");
                                 messageMapper.insert(newBotMessage);
                                 
                                 // 更新当前消息ID和父消息ID
-                                currentParentId[0] = currentMessageId[0];
-                                currentMessageId[0] = newBotMessage.getId();
+                                currentParentId.set(currentMessageId.get());
+                                currentMessageId.set(newBotMessage.getId());
                                 
                                 // 清空fullAnswer，开始收集新消息内容
                                 fullAnswer.setLength(0);
                             }
                             // 同时也要发送给前端，让前端也创建新消息
                             responseConsumer.accept(
-                                StreamChatResponse.status(conversationId, currentMessageId[0], status));
+                                StreamChatResponse.status(conversationId, currentMessageId.get(), status));
                         } else {
                             responseConsumer.accept(
-                                StreamChatResponse.status(conversationId, currentMessageId[0], status));
+                                StreamChatResponse.status(conversationId, currentMessageId.get(), status));
                         }
                     },
                     // 来源消费者
@@ -241,13 +242,13 @@ public class ChatServiceImpl implements ChatService {
                         allSourceDocs.addAll(sourceDocs);
                         // 发送累加后的所有sources（而不是只发送新增的）
                         responseConsumer.accept(
-                                StreamChatResponse.sources(conversationId, currentMessageId[0], new ArrayList<>(allSourceDocs)));
+                                StreamChatResponse.sources(conversationId, currentMessageId.get(), new ArrayList<>(allSourceDocs)));
                     },
                     // 内容消费者
                     chunk -> {
                         fullAnswer.append(chunk);
                         responseConsumer.accept(
-                                StreamChatResponse.content(conversationId, currentMessageId[0], chunk));
+                                StreamChatResponse.content(conversationId, currentMessageId.get(), chunk));
                     }
             );
         } else {
@@ -259,7 +260,7 @@ public class ChatServiceImpl implements ChatService {
                     conversationId,
                     // 状态消费者
                     status -> responseConsumer.accept(
-                            StreamChatResponse.status(conversationId, currentMessageId[0], status)),
+                            StreamChatResponse.status(conversationId, currentMessageId.get(), status)),
                     // 来源消费者
                     sources -> {
                         List<ChatResponse.SourceDoc> sourceDocs = sources.stream()
@@ -272,13 +273,13 @@ public class ChatServiceImpl implements ChatService {
                                 .collect(Collectors.toList());
                         allSourceDocs.addAll(sourceDocs);
                         responseConsumer.accept(
-                                StreamChatResponse.sources(conversationId, currentMessageId[0], sourceDocs));
+                                StreamChatResponse.sources(conversationId, currentMessageId.get(), sourceDocs));
                     },
                     // 内容消费者
                     chunk -> {
                         fullAnswer.append(chunk);
                         responseConsumer.accept(
-                                StreamChatResponse.content(conversationId, currentMessageId[0], chunk));
+                                StreamChatResponse.content(conversationId, currentMessageId.get(), chunk));
                     }
             );
         }
@@ -300,13 +301,13 @@ public class ChatServiceImpl implements ChatService {
         metadata.put("isLastInRound", true);
         
         // 使用自定义方法更新，处理 JSONB 类型
-        messageMapper.updateContentAndMetadata(currentMessageId[0], fullAnswer.toString(), metadata);
+        messageMapper.updateContentAndMetadata(currentMessageId.get(), fullAnswer.toString(), metadata);
         
         // 9. 发送完成事件
         long responseTime = System.currentTimeMillis() - startTime;
         responseConsumer.accept(StreamChatResponse.done(
                 conversationId,
-                currentMessageId[0],
+                currentMessageId.get(),
                 ChatResponse.TokenUsage.builder()
                         .promptTokens(0)
                         .completionTokens(0)
