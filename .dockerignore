@@ -1,0 +1,53 @@
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+docs/
+*.md
+README.md
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.settings/
+.project
+.classpath
+
+# Logs
+logs/
+*.log
+
+# Uploads
+uploads/
+
+# Environment
+.env
+.env.example
+
+# Docker files (not needed for backend build)
+docker-compose.yml
+deploy.sh
+deploy.bat
+DOCKER_DEPLOY.md
+
+# Frontend
+frontend/
+node_modules/
+dist/
+
+# Test files
+src/test/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+target/
+*.jar
+*.war

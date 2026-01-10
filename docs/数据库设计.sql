@@ -1,15 +1,7 @@
 -- ============================================
 -- EchoCampus 校园问答机器人 - PostgreSQL数据库设计
 -- ============================================
-
--- 创建数据库
-CREATE DATABASE echocampus_bot
-    WITH 
-    ENCODING = 'UTF8'
-    CONNECTION LIMIT = -1;
-
--- 使用数据库
-\c echocampus_bot;
+-- 注意：数据库已由Docker环境变量自动创建，此处直接使用
 
 -- ============================================
 -- 1. 用户表 (users)
@@ -134,6 +126,8 @@ CREATE TABLE knowledge_chunks (
     page_number INTEGER,  -- PDF页码
     metadata JSONB DEFAULT '{}',  -- 存储额外信息(段落标题、关键词等)
     token_count INTEGER DEFAULT 0,
+    start_position INTEGER,  -- 在文档中的起始位置
+    end_position INTEGER,  -- 在文档中的结束位置
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -249,16 +243,7 @@ CREATE TABLE knowledge_categories (
 CREATE INDEX idx_knowledge_categories_parent_id ON knowledge_categories(parent_id);
 CREATE INDEX idx_knowledge_categories_sort_order ON knowledge_categories(sort_order);
 
--- 插入默认分类
-INSERT INTO knowledge_categories (name, description, sort_order) VALUES 
-('编程语言', 'Java、Python、C++等编程语言相关知识', 1),
-('框架技术', 'Spring Boot、Vue.js、React等框架技术', 2),
-('数据库', 'MySQL、PostgreSQL、MongoDB等数据库知识', 3),
-('开发工具', 'IDE、Git、Maven等开发工具使用', 4),
-('系统运维', 'Linux、Docker、K8s等运维知识', 5),
-('课程简介', '学校课程相关信息', 6),
-('实验室介绍', '实验室设备、规章制度等', 7),
-('常见问题', '常见IT问题和解决方案', 8);
+-- 注意：知识库分类由用户根据实际需求创建，此处不预设分类数据
 
 -- ============================================
 -- 10. 系统统计表 (system_statistics)
@@ -350,46 +335,6 @@ CREATE INDEX idx_knowledge_chunks_content_search ON knowledge_chunks USING gin(t
 CREATE INDEX idx_messages_metadata ON messages USING gin(metadata);
 CREATE INDEX idx_knowledge_chunks_metadata ON knowledge_chunks USING gin(metadata);
 CREATE INDEX idx_search_logs_retrieved_chunks ON search_logs USING gin(retrieved_chunks);
-
--- ============================================
--- 初始化数据
--- ============================================
-
--- 插入示例知识库文档
-INSERT INTO knowledge_docs (title, description, file_name, file_type, category, status, created_by) VALUES 
-('Java编程思想', 'Java语言经典入门教材', 'java_thinking.pdf', 'pdf', '编程语言', 'ACTIVE', 1),
-('Spring Boot实战', 'Spring Boot框架使用指南', 'spring_boot_action.pdf', 'pdf', '框架技术', 'ACTIVE', 1),
-('MySQL数据库设计', 'MySQL数据库设计与优化', 'mysql_design.pdf', 'pdf', '数据库', 'ACTIVE', 1);
-
--- 插入示例对话
-INSERT INTO conversations (user_id, title, message_count) VALUES 
-(1, 'Java相关问题', 5),
-(1, 'Spring Boot框架咨询', 3);
-
--- 插入示例消息
-INSERT INTO messages (conversation_id, sender_type, content) VALUES 
-(1, 'USER', '什么是Java的面向对象编程?'),
-(1, 'BOT', '面向对象编程(OOP)是一种编程范式,它使用"对象"来设计软件。Java是完全面向对象的语言,支持封装、继承、多态三大特性...'),
-(1, 'USER', '能举个例子吗?'),
-(1, 'BOT', '当然可以!比如我们可以定义一个"学生"类: public class Student { private String name; private int age; ... }');
-
--- ============================================
--- 数据库权限设置(可选)
--- ============================================
-
--- 创建只读用户
-CREATE USER qabot_reader WITH PASSWORD 'readonly_password';
-GRANT CONNECT ON DATABASE echocampus_bot TO qabot_reader;
-GRANT USAGE ON SCHEMA public TO qabot_reader;
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO qabot_reader;
-GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO qabot_reader;
-
--- 创建读写用户
-CREATE USER qabot_writer WITH PASSWORD 'write_password';
-GRANT CONNECT ON DATABASE echocampus_bot TO qabot_writer;
-GRANT USAGE ON SCHEMA public TO qabot_writer;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO qabot_writer;
-GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO qabot_writer;
 
 -- ============================================
 -- 备注
