@@ -94,7 +94,7 @@ import {
   ExclamationCircleOutlined,
 } from '@ant-design/icons-vue'
 import { knowledgeApi } from '@/api'
-import type { DocumentProgress, DocumentProcessStage } from '@/types'
+import type { DocumentProgress } from '@/types'
 
 const props = withDefaults(defineProps<{
   docId?: number

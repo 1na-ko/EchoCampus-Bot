@@ -277,8 +277,8 @@ export const useChatStore = defineStore('chat', {
           // 检测新消息标记：保存当前内容为一条消息，开始新的流式内容
           if (stage === '__NEW_MESSAGE__') {
             if (streamState.streamingContent.trim()) {
-              const finalMessages = (newConversationId || conversationId) 
-                ? this._getOrCreateMessages(newConversationId || conversationId)
+              const finalMessages = (newConversationId ?? conversationId) 
+                ? this._getOrCreateMessages((newConversationId ?? conversationId)!)
                 : messages
               
               // 中间消息不保存sources，只保存内容
@@ -405,11 +405,11 @@ export const useChatStore = defineStore('chat', {
           streamState.processingStage = 'idle'
         },
         
-        onError: (error) => {
+        onError: (error: Error | string) => {
           console.error('Stream error:', error)
           
           // 如果是 AbortError，说明是被主动取消的，不显示错误
-          if (error.name === 'AbortError') {
+          if (error instanceof Error && error.name === 'AbortError') {
             streamState.processingStage = 'idle'
             streamState.processingStatus = ''
             streamState.isSending = false

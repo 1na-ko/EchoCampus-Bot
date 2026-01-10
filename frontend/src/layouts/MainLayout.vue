@@ -139,8 +139,8 @@ const toggleSider = () => {
   }
 }
 
-const handleMenuClick = ({ key }: { key: string }) => {
-  router.push(key)
+const handleMenuClick = ({ key }: { key: string | number }) => {
+  router.push(String(key))
   if (isMobile.value) {
     showMobileSider.value = false
   }

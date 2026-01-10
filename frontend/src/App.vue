@@ -15,7 +15,7 @@
 </template>
 
 <script setup lang="ts">
-import { theme } from 'ant-design-vue';
+// App configuration
 </script>
 
 <style>
