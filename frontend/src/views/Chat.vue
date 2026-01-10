@@ -235,7 +235,9 @@
 import { nextTick, computed, watch, h, ref, onMounted, onUnmounted } from 'vue'
 import { Modal, Empty } from 'ant-design-vue'
 import { useChatStore } from '@/stores/chat'
-import { marked } from 'marked'
+import type { Message } from '@/types'
+import { marked, MarkedOptions } from 'marked'
+import { markedHighlight } from 'marked-highlight'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
 import dayjs from 'dayjs'
@@ -315,13 +317,17 @@ const currentStatusText = computed(() => {
 })
 
 // 配置 marked
-marked.setOptions({
-  highlight: (code, lang) => {
+marked.use(markedHighlight({
+  langPrefix: 'hljs language-',
+  highlight(code: string, lang: string) {
     const language = hljs.getLanguage(lang) ? lang : 'plaintext'
     return hljs.highlight(code, { language }).value
-  },
+  }
+}))
+
+marked.setOptions({
   breaks: true,
-})
+} as MarkedOptions)
 
 const renderMarkdown = (content: string) => {
   return marked(content)
@@ -420,11 +426,6 @@ watch(() => chatStore.streamingContent, () => {
 watch(() => chatStore.messages.length, () => {
   scrollToBottom()
 })
-
-const sendQuickQuestion = (question: string) => {
-  inputMessage.value = question
-  handleSendMessage()
-}
 
 const handleRename = (conv: any) => {
   Modal.confirm({
