@@ -32,7 +32,8 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://localhost:8083',
+        // target: 'http://localhost:8083',
+        target: 'http://150.158.97.39:8083',
         changeOrigin: true,
       },
     },

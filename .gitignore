@@ -63,6 +63,7 @@ uploads/
 
 # Docker配置文件
 docker-compose.yml
+docker-compose-server.yml
 
 # 如果有其它按模式的临时或备份文件需要忽略，可使用更精确的模式
 **/*.bak
