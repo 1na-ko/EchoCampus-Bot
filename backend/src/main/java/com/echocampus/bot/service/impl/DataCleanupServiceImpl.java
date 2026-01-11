@@ -3,6 +3,7 @@ package com.echocampus.bot.service.impl;
 import com.echocampus.bot.mapper.ConversationMapper;
 import com.echocampus.bot.mapper.MessageMapper;
 import com.echocampus.bot.service.DataCleanupService;
+import com.echocampus.bot.utils.DateTimeUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,7 +33,7 @@ public class DataCleanupServiceImpl implements DataCleanupService {
         log.info("开始清理过期的软删除数据，保留分钟数: {}", retentionMinutes);
 
         // 计算截止日期：当前时间减去保留分钟数
-        LocalDateTime beforeDate = LocalDateTime.now().minusMinutes(retentionMinutes);
+        LocalDateTime beforeDate = DateTimeUtil.now().minusMinutes(retentionMinutes);
         log.info("清理截止日期: {}", beforeDate);
 
         // 1. 查询需要清理的对话ID列表

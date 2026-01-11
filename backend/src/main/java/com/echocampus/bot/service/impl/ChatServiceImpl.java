@@ -12,6 +12,7 @@ import com.echocampus.bot.mapper.MessageMapper;
 import com.echocampus.bot.service.ChatService;
 import com.echocampus.bot.service.RagService;
 import com.echocampus.bot.service.EnhancedRagService;
+import com.echocampus.bot.utils.DateTimeUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -120,7 +121,7 @@ public class ChatServiceImpl implements ChatService {
                         .totalTokens(0)
                         .build())
                 .responseTimeMs(responseTime)
-                .createdAt(LocalDateTime.now())
+                .createdAt(DateTimeUtil.now())
                 .build();
     }
 
