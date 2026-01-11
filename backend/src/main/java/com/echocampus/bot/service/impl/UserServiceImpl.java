@@ -7,6 +7,7 @@ import com.echocampus.bot.dto.response.LoginResponse;
 import com.echocampus.bot.entity.User;
 import com.echocampus.bot.mapper.UserMapper;
 import com.echocampus.bot.service.UserService;
+import com.echocampus.bot.utils.DateTimeUtil;
 import com.echocampus.bot.utils.JwtUtil;
 import com.echocampus.bot.utils.PasswordUtil;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +45,7 @@ public class UserServiceImpl implements UserService {
         }
 
         // 更新最后登录时间
-        user.setLastLoginAt(LocalDateTime.now());
+        user.setLastLoginAt(DateTimeUtil.now());
         userMapper.updateById(user);
 
         // 生成Token

@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import com.echocampus.bot.utils.DateTimeUtil;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -100,7 +101,7 @@ public class DocumentProgressServiceImpl implements DocumentProgressService {
         }
         
         // 记录连接时间
-        connectionTimestamps.put(docId, LocalDateTime.now());
+        connectionTimestamps.put(docId, DateTimeUtil.now());
         
         log.info("注册SSE发射器: docId={}, 当前连接数={}", docId, currentConnections.get());
         
@@ -239,7 +240,7 @@ public class DocumentProgressServiceImpl implements DocumentProgressService {
      */
     @Scheduled(fixedRate = 5 * 60 * 1000)
     public void cleanupTimeoutConnections() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = DateTimeUtil.now();
         int cleanedCount = 0;
         
         for (Map.Entry<Long, LocalDateTime> entry : connectionTimestamps.entrySet()) {

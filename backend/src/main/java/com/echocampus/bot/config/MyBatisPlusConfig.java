@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import com.echocampus.bot.utils.DateTimeUtil;
 
 /**
  * MyBatis-Plus配置类
@@ -35,13 +36,13 @@ public class MyBatisPlusConfig {
 
         @Override
         public void insertFill(MetaObject metaObject) {
-            this.strictInsertFill(metaObject, "createdAt", LocalDateTime.class, LocalDateTime.now());
-            this.strictInsertFill(metaObject, "updatedAt", LocalDateTime.class, LocalDateTime.now());
+            this.strictInsertFill(metaObject, "createdAt", LocalDateTime.class, DateTimeUtil.now());
+            this.strictInsertFill(metaObject, "updatedAt", LocalDateTime.class, DateTimeUtil.now());
         }
 
         @Override
         public void updateFill(MetaObject metaObject) {
-            this.strictUpdateFill(metaObject, "updatedAt", LocalDateTime.class, LocalDateTime.now());
+            this.strictUpdateFill(metaObject, "updatedAt", LocalDateTime.class, DateTimeUtil.now());
         }
     }
 }
