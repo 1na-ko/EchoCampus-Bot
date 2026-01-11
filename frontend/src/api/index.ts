@@ -195,7 +195,7 @@ export const knowledgeApi = {
       onComplete?: () => void
     }
   ): EventSource {
-    const url = new URL(`/api/v1/knowledge/docs/${docId}/progress`, window.location.origin)
+    const url = new URL(`http://150.158.97.39:8083/api/v1/knowledge/docs/${docId}/progress`, window.location.origin)
     
     const eventSource = new EventSource(url.toString())
     
