@@ -47,15 +47,15 @@ router.beforeEach((to, _from, next) => {
   const requiresAuth = to.matched.some((record) => record.meta.requiresAuth !== false)
 
   if (requiresAuth && !token) {
-    next('/login')
+    next('/student4/login')
   } else if (to.path === '/login' && token) {
-    next('/chat')
+    next('/student4/chat')
   } else {
     // 权限控制：非管理员不能访问知识库页面
     if (to.path === '/knowledge' || to.path.startsWith('/knowledge/')) {
       const userRole = localStorage.getItem('userRole')
       if (userRole !== 'ADMIN') {
-        next('/chat')
+        next('/student4/chat')
         return
       }
     }

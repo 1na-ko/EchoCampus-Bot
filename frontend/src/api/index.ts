@@ -195,7 +195,16 @@ export const knowledgeApi = {
       onComplete?: () => void
     }
   ): EventSource {
+    const token = localStorage.getItem('token')
+    const userId = localStorage.getItem('userId')
     const url = new URL(`http://150.158.97.39:8083/api/v1/knowledge/docs/${docId}/progress`, window.location.origin)
+    
+    if (token) {
+      url.searchParams.append('token', token)
+    }
+    if (userId) {
+      url.searchParams.append('userId', userId)
+    }
     
     const eventSource = new EventSource(url.toString())
     
