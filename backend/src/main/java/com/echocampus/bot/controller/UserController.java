@@ -3,9 +3,12 @@ package com.echocampus.bot.controller;
 import com.echocampus.bot.annotation.RequireAuth;
 import com.echocampus.bot.common.Result;
 import com.echocampus.bot.dto.request.LoginRequest;
+import com.echocampus.bot.dto.request.RegisterWithCodeRequest;
+import com.echocampus.bot.dto.request.SendVerificationCodeRequest;
 import com.echocampus.bot.dto.response.LoginResponse;
 import com.echocampus.bot.entity.User;
 import com.echocampus.bot.service.UserService;
+import com.echocampus.bot.service.VerificationCodeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -14,9 +17,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * 用户控制器
- */
 @Tag(name = "User", description = "用户相关接口")
 @RestController
 @RequestMapping("/v1")
@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
+    private final VerificationCodeService verificationCodeService;
 
     @Operation(summary = "用户登录", description = "用户登录并获取Token")
     @PostMapping("/auth/login")
@@ -36,7 +37,28 @@ public class UserController {
     @PostMapping("/auth/register")
     public Result<User> register(@Valid @RequestBody User user) {
         User registeredUser = userService.register(user);
-        // 返回时隐藏密码
+        registeredUser.setPassword(null);
+        return Result.success("注册成功", registeredUser);
+    }
+
+    @Operation(summary = "发送验证码", description = "发送邮箱验证码")
+    @PostMapping("/auth/send-verification-code")
+    public Result<Void> sendVerificationCode(@Valid @RequestBody SendVerificationCodeRequest request, HttpServletRequest httpRequest) {
+        String ipAddress = getClientIp(httpRequest);
+        verificationCodeService.sendVerificationCode(request.getEmail(), request.getType(), ipAddress);
+        return Result.success();
+    }
+
+    @Operation(summary = "用户注册（带验证码）", description = "使用邮箱验证码注册新用户")
+    @PostMapping("/auth/register-with-code")
+    public Result<User> registerWithCode(@Valid @RequestBody RegisterWithCodeRequest request) {
+        User registeredUser = userService.registerWithVerificationCode(
+                request.getUsername(),
+                request.getPassword(),
+                request.getEmail(),
+                request.getNickname(),
+                request.getVerificationCode()
+        );
         registeredUser.setPassword(null);
         return Result.success("注册成功", registeredUser);
     }
@@ -69,9 +91,24 @@ public class UserController {
     @RequireAuth
     public Result<Void> changePassword(HttpServletRequest request,
             @Parameter(description = "旧密码") @RequestParam String oldPassword,
-            @Parameter(description = "新密码") @RequestParam String newPassword) {
+            @Parameter(description = "新密码") @RequestParam String newPassword,
+            @Parameter(description = "验证码") @RequestParam String verificationCode) {
         Long userId = (Long) request.getAttribute("userId");
-        userService.changePassword(userId, oldPassword, newPassword);
+        userService.changePassword(userId, oldPassword, newPassword, verificationCode);
         return Result.success();
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("X-Real-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        if (ip != null && ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        return ip;
     }
 }

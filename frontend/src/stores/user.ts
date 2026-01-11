@@ -60,6 +60,40 @@ export const useUserStore = defineStore('user', {
       }
     },
 
+    // 发送验证码
+    async sendVerificationCode(email: string, type = 'REGISTER') {
+      try {
+        await authApi.sendVerificationCode({ email, type })
+        message.success('验证码已发送，请查收邮件')
+        return true
+      } catch (error: any) {
+        console.error('Send verification code error:', error)
+        const errorMsg = error?.response?.data?.message || '验证码发送失败'
+        message.error(errorMsg)
+        return false
+      }
+    },
+
+    // 注册（带验证码）
+    async registerWithCode(data: {
+      username: string
+      password: string
+      email: string
+      nickname?: string
+      verificationCode: string
+    }) {
+      try {
+        await authApi.registerWithCode(data)
+        message.success('注册成功，请登录')
+        return true
+      } catch (error: any) {
+        console.error('Register with code error:', error)
+        const errorMsg = error?.response?.data?.message || '注册失败'
+        message.error(errorMsg)
+        return false
+      }
+    },
+
     // 获取当前用户信息
     async fetchCurrentUser() {
       try {
@@ -93,16 +127,18 @@ export const useUserStore = defineStore('user', {
     },
 
     // 修改密码
-    async changePassword(oldPassword: string, newPassword: string) {
+    async changePassword(oldPassword: string, newPassword: string, verificationCode: string) {
       try {
-        await authApi.changePassword(oldPassword, newPassword)
+        await authApi.changePassword(oldPassword, newPassword, verificationCode)
         message.success('密码修改成功，请重新登录')
         setTimeout(() => {
           this.logout()
-        }, 3000)
+        }, 1500)
         return true
-      } catch (error) {
+      } catch (error: any) {
         console.error('Change password error:', error)
+          const errorMsg = error?.response?.data?.message || '密码修改失败'
+          message.error(errorMsg)
         return false
       }
     },

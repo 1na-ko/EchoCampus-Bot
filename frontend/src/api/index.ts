@@ -27,6 +27,22 @@ export const authApi = {
     return request.post<User>('/v1/auth/register', data)
   },
 
+  // 发送验证码
+  sendVerificationCode(data: { email: string; type: string }) {
+    return request.post<void>('/v1/auth/send-verification-code', data)
+  },
+
+  // 用户注册（带验证码）
+  registerWithCode(data: {
+    username: string
+    password: string
+    email: string
+    nickname?: string
+    verificationCode: string
+  }) {
+    return request.post<User>('/v1/auth/register-with-code', data)
+  },
+
   // 获取当前用户信息
   getCurrentUser() {
     return request.get<User>('/v1/user/profile')
@@ -38,9 +54,9 @@ export const authApi = {
   },
 
   // 修改密码
-  changePassword(oldPassword: string, newPassword: string) {
+  changePassword(oldPassword: string, newPassword: string, verificationCode: string) {
     return request.put<void>('/v1/user/password', null, {
-      params: { oldPassword, newPassword },
+      params: { oldPassword, newPassword, verificationCode },
     })
   },
 }

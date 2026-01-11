@@ -149,6 +149,28 @@
                   />
                   </a-form-item>
 
+                  <a-form-item label="邮箱验证码" name="verificationCode" class="form-item password-form-item">
+                    <div style="display: flex; gap: 8px;">
+                      <a-input
+                         v-model:value="passwordForm.verificationCode"
+                         placeholder="请输入6位验证码"
+                         class="glass-input"
+                         :bordered="false"
+                         style="flex: 1;"
+                         :maxlength="6"
+                      />
+                      <a-button
+                        class="glass-input"
+                        :disabled="countdown > 0"
+                        :loading="sendingCode"
+                        @click="handleSendCode"
+                        style="width: 120px; font-size: 13px; color: var(--primary-color); font-weight: 500;"
+                      >
+                        {{ countdown > 0 ? `${countdown}s` : '发送验证码' }}
+                      </a-button>
+                    </div>
+                  </a-form-item>
+
                   <div class="form-actions-bottom">
                   <a-button
                      type="primary"
@@ -185,6 +207,9 @@ const userStore = useUserStore()
 const isEditing = ref(false)
 const saving = ref(false)
 const changingPassword = ref(false)
+const sendingCode = ref(false)
+const countdown = ref(0)
+let countdownTimer: number | null = null
 
 const formData = reactive({
   username: '',
@@ -199,6 +224,7 @@ const passwordForm = reactive({
   oldPassword: '',
   newPassword: '',
   confirmPassword: '',
+  verificationCode: '',
 })
 
 const passwordRules = {
@@ -217,6 +243,10 @@ const passwordRules = {
         return Promise.resolve()
       },
     },
+  ],
+  verificationCode: [
+    { required: true, message: '请输入验证码' },
+    { len: 6, message: '验证码必须为6位数字' },
   ],
 }
 
@@ -254,8 +284,43 @@ const cancelEdit = () => {
   loadUserData()
 }
 
+const handleSendCode = async () => {
+  if (!formData.email) {
+    message.warning('请先绑定邮箱')
+    return
+  }
+  
+  sendingCode.value = true
+  try {
+    const success = await userStore.sendVerificationCode(formData.email, 'CHANGE_PASSWORD')
+    if (success) {
+      startCountdown()
+    }
+  } finally {
+    sendingCode.value = false
+  }
+}
+
+const startCountdown = () => {
+  countdown.value = 60
+  countdownTimer = window.setInterval(() => {
+    countdown.value--
+    if (countdown.value <= 0) {
+      stopCountdown()
+    }
+  }, 1000)
+}
+
+const stopCountdown = () => {
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
+  countdown.value = 0
+}
+
 const handleChangePassword = async () => {
-  if (!passwordForm.oldPassword || !passwordForm.newPassword) {
+  if (!passwordForm.oldPassword || !passwordForm.newPassword || !passwordForm.verificationCode) {
     message.error('请填写完整信息')
     return
   }
@@ -269,18 +334,25 @@ const handleChangePassword = async () => {
   try {
     await userStore.changePassword(
       passwordForm.oldPassword,
-      passwordForm.newPassword
+      passwordForm.newPassword,
+      passwordForm.verificationCode
     )
     Object.assign(passwordForm, {
       oldPassword: '',
       newPassword: '',
       confirmPassword: '',
+      verificationCode: '',
     })
     message.success('密码修改成功')
+    stopCountdown()
   } finally {
     changingPassword.value = false
   }
 }
+
+onUnmounted(() => {
+  stopCountdown()
+})
 
 onMounted(async () => {
   if (!userStore.user) {

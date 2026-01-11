@@ -26,12 +26,17 @@ public enum ResultCode {
     ERROR(500, "服务器内部错误"),
     SERVICE_UNAVAILABLE(503, "服务暂不可用"),
     SYSTEM_BUSY(504, "系统繁忙，请稍后再试"),
+    TOO_MANY_REQUESTS(429, "请求过于频繁，请稍后再试"),
 
     // 业务错误 1xxx
     USER_NOT_FOUND(1001, "用户不存在"),
     USER_ALREADY_EXISTS(1002, "用户已存在"),
     PASSWORD_ERROR(1003, "密码错误"),
     USER_DISABLED(1004, "用户已禁用"),
+    EMAIL_NOT_VERIFIED(1005, "邮箱未验证"),
+    VERIFICATION_CODE_INVALID(1006, "验证码无效或已过期"),
+    VERIFICATION_CODE_USED(1007, "验证码已使用"),
+    EMAIL_SEND_FAILED(1008, "邮件发送失败"),
     
     // 对话相关 2xxx
     CONVERSATION_NOT_FOUND(2001, "会话不存在"),

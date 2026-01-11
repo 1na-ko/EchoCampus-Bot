@@ -12,7 +12,8 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./docs/数据库设计.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./docs/数据库设计.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./docs/email_verification_codes.sql:/docker-entrypoint-initdb.d/02-email-verification-codes.sql
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
@@ -126,6 +127,8 @@ services:
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
       JWT_SECRET: ${JWT_SECRET}
       DOCUMENT_UPLOAD_PATH: /app/uploads
+      MAIL_USERNAME: ${MAIL_USERNAME:-EchoTechStudio@163.com}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-ZWw87M2Y3hcmrUSG}
     volumes:
       - uploads_data:/app/uploads
       - logs_data:/app/logs
