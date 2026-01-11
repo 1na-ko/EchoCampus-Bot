@@ -1,5 +1,6 @@
 package com.echocampus.bot.controller;
 
+import com.echocampus.bot.annotation.RequireAuth;
 import com.echocampus.bot.common.Result;
 import com.echocampus.bot.dto.request.LoginRequest;
 import com.echocampus.bot.dto.response.LoginResponse;
@@ -8,6 +9,7 @@ import com.echocampus.bot.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -41,8 +43,9 @@ public class UserController {
 
     @Operation(summary = "获取当前用户信息", description = "获取当前登录用户的信息")
     @GetMapping("/user/profile")
-    public Result<User> getCurrentUser(
-            @Parameter(description = "用户ID") @RequestHeader(value = "X-User-Id", defaultValue = "1") Long userId) {
+    @RequireAuth
+    public Result<User> getCurrentUser(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
         User user = userService.getUserById(userId);
         user.setPassword(null);
         return Result.success(user);
@@ -50,9 +53,9 @@ public class UserController {
 
     @Operation(summary = "更新用户信息", description = "更新当前用户的个人信息")
     @PutMapping("/user/profile")
-    public Result<Void> updateProfile(
-            @Parameter(description = "用户ID") @RequestHeader(value = "X-User-Id", defaultValue = "1") Long userId,
-            @RequestBody User user) {
+    @RequireAuth
+    public Result<Void> updateProfile(HttpServletRequest request, @RequestBody User user) {
+        Long userId = (Long) request.getAttribute("userId");
         user.setId(userId);
         // 不允许通过此接口修改密码和角色
         user.setPassword(null);
@@ -63,10 +66,11 @@ public class UserController {
 
     @Operation(summary = "修改密码", description = "修改用户密码")
     @PutMapping("/user/password")
-    public Result<Void> changePassword(
-            @Parameter(description = "用户ID") @RequestHeader(value = "X-User-Id", defaultValue = "1") Long userId,
+    @RequireAuth
+    public Result<Void> changePassword(HttpServletRequest request,
             @Parameter(description = "旧密码") @RequestParam String oldPassword,
             @Parameter(description = "新密码") @RequestParam String newPassword) {
+        Long userId = (Long) request.getAttribute("userId");
         userService.changePassword(userId, oldPassword, newPassword);
         return Result.success();
     }
