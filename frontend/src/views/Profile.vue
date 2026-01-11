@@ -332,19 +332,20 @@ const handleChangePassword = async () => {
 
   changingPassword.value = true
   try {
-    await userStore.changePassword(
+    const success = await userStore.changePassword(
       passwordForm.oldPassword,
       passwordForm.newPassword,
       passwordForm.verificationCode
     )
-    Object.assign(passwordForm, {
-      oldPassword: '',
-      newPassword: '',
-      confirmPassword: '',
-      verificationCode: '',
-    })
-    message.success('密码修改成功')
-    stopCountdown()
+    if (success) {
+      Object.assign(passwordForm, {
+        oldPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+        verificationCode: '',
+      })
+      stopCountdown()
+    }
   } finally {
     changingPassword.value = false
   }

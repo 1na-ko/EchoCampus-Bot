@@ -400,6 +400,7 @@ onUnmounted(() => {
 
 .verify-btn {
   width: 130px;
+  height: 48px;
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%);
   border: 1px solid rgba(99, 102, 241, 0.2);
   color: var(--primary-color);

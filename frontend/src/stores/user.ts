@@ -137,8 +137,6 @@ export const useUserStore = defineStore('user', {
         return true
       } catch (error: any) {
         console.error('Change password error:', error)
-          const errorMsg = error?.response?.data?.message || '密码修改失败'
-          message.error(errorMsg)
         return false
       }
     },
