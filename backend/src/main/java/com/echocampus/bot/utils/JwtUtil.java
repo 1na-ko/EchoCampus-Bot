@@ -72,6 +72,14 @@ public class JwtUtil {
     }
 
     /**
+     * 从Token中获取角色
+     */
+    public String getRoleFromToken(String token) {
+        Claims claims = parseToken(token);
+        return claims.get("role", String.class);
+    }
+
+    /**
      * 验证Token是否过期
      */
     public boolean isTokenExpired(String token) {

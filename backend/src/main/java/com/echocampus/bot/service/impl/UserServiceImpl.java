@@ -8,6 +8,7 @@ import com.echocampus.bot.entity.User;
 import com.echocampus.bot.mapper.UserMapper;
 import com.echocampus.bot.service.UserService;
 import com.echocampus.bot.utils.JwtUtil;
+import com.echocampus.bot.utils.PasswordUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,11 +34,9 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(ResultCode.USER_NOT_FOUND);
         }
 
-        // 校验密码（简化版，实际应使用BCrypt）
-        // TODO: 使用BCrypt进行密码校验
-        // if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-        //     throw new BusinessException(ResultCode.PASSWORD_ERROR);
-        // }
+        if (!PasswordUtil.matches(request.getPassword(), user.getPassword())) {
+            throw new BusinessException(ResultCode.PASSWORD_ERROR);
+        }
 
         // 检查用户状态
         if (!"ACTIVE".equals(user.getStatus())) {
@@ -75,8 +74,7 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(ResultCode.USER_ALREADY_EXISTS, "邮箱已被注册");
         }
 
-        // TODO: 密码加密
-        // user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setPassword(PasswordUtil.encode(user.getPassword()));
 
         // 设置默认值
         user.setRole("USER");
@@ -109,14 +107,11 @@ public class UserServiceImpl implements UserService {
     public void changePassword(Long userId, String oldPassword, String newPassword) {
         User user = getUserById(userId);
 
-        // TODO: 校验旧密码
-        // if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
-        //     throw new BusinessException(ResultCode.PASSWORD_ERROR, "原密码错误");
-        // }
+        if (!PasswordUtil.matches(oldPassword, user.getPassword())) {
+            throw new BusinessException(ResultCode.PASSWORD_ERROR, "原密码错误");
+        }
 
-        // TODO: 加密新密码
-        // user.setPassword(passwordEncoder.encode(newPassword));
-        user.setPassword(newPassword);
+        user.setPassword(PasswordUtil.encode(newPassword));
 
         userMapper.updateById(user);
     }
