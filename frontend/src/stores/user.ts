@@ -97,7 +97,9 @@ export const useUserStore = defineStore('user', {
       try {
         await authApi.changePassword(oldPassword, newPassword)
         message.success('密码修改成功，请重新登录')
-        this.logout()
+        setTimeout(() => {
+          this.logout()
+        }, 3000)
         return true
       } catch (error) {
         console.error('Change password error:', error)
@@ -113,6 +115,7 @@ export const useUserStore = defineStore('user', {
       localStorage.removeItem('token')
       localStorage.removeItem('userId')
       message.info('已退出登录')
+      window.location.href = '/student4/login'
     },
 
     // 清理所有状态（用于退出登录时）

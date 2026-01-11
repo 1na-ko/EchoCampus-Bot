@@ -72,6 +72,12 @@ public class JwtAuthInterceptor implements HandlerInterceptor {
         if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
             return bearerToken.substring(7);
         }
+        
+        String tokenParam = request.getParameter("token");
+        if (tokenParam != null && !tokenParam.isEmpty()) {
+            return tokenParam;
+        }
+        
         return null;
     }
 }
