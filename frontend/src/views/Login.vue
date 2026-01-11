@@ -91,6 +91,28 @@
               />
             </a-form-item>
 
+            <a-form-item name="verificationCode" label="验证码">
+              <div class="verify-code-wrapper">
+                <a-input
+                  v-model:value="registerForm.verificationCode"
+                  size="large"
+                  placeholder="请输入6位验证码"
+                  :prefix="h(SafetyOutlined)"
+                  :maxlength="6"
+                  class="verify-input"
+                />
+                <a-button
+                  size="large"
+                  class="verify-btn"
+                  :disabled="countdown > 0 || !registerForm.email"
+                  :loading="sendingCode"
+                  @click="handleSendCode"
+                >
+                  {{ countdown > 0 ? `${countdown}s` : '发送验证码' }}
+                </a-button>
+              </div>
+            </a-form-item>
+
             <a-form-item>
               <a-button
                 type="primary"
@@ -112,7 +134,7 @@
 <script setup lang="ts">
 import { h } from 'vue'
 import { useRouter } from 'vue-router'
-import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons-vue'
+import { UserOutlined, LockOutlined, MailOutlined, SafetyOutlined } from '@ant-design/icons-vue'
 import { useUserStore } from '@/stores/user'
 import type { LoginRequest } from '@/types'
 import type { RuleObject } from 'ant-design-vue/es/form'
@@ -122,15 +144,17 @@ const userStore = useUserStore()
 
 const activeTab = ref('login')
 const loading = ref(false)
+const sendingCode = ref(false)
+const countdown = ref(0)
+let countdownTimer: number | null = null
 
 interface RegisterForm {
   username: string
   email: string
   password: string
   confirmPassword: string
-  nickname: string
-  role: string
-  status: string
+  verificationCode: string
+  nickname?: string
 }
 
 const loginForm = reactive<LoginRequest>({
@@ -143,9 +167,7 @@ const registerForm = reactive<RegisterForm>({
   email: '',
   password: '',
   confirmPassword: '',
-  nickname: '',
-  role: 'USER',
-  status: 'ACTIVE',
+  verificationCode: '',
 })
 
 const loginRules = {
@@ -177,6 +199,10 @@ const registerRules: Record<string, RuleObject[]> = {
       },
     },
   ],
+  verificationCode: [
+    { required: true, message: '请输入验证码' },
+    { len: 6, message: '验证码必须为6位数字' },
+  ],
 }
 
 const handleLogin = async () => {
@@ -191,19 +217,68 @@ const handleLogin = async () => {
   }
 }
 
+const handleSendCode = async () => {
+  if (!registerForm.email) {
+    return
+  }
+
+  sendingCode.value = true
+  try {
+    const success = await userStore.sendVerificationCode(registerForm.email, 'REGISTER')
+    if (success) {
+      startCountdown()
+    }
+  } finally {
+    sendingCode.value = false
+  }
+}
+
+const startCountdown = () => {
+  countdown.value = 60
+  countdownTimer = window.setInterval(() => {
+    countdown.value--
+    if (countdown.value <= 0) {
+      stopCountdown()
+    }
+  }, 1000)
+}
+
+const stopCountdown = () => {
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
+  countdown.value = 0
+}
+
 const handleRegister = async () => {
   loading.value = true
   try {
-    const { confirmPassword, ...userData } = registerForm
-    userData.nickname = userData.username
-    const success = await userStore.register(userData)
+    const success = await userStore.registerWithCode({
+      username: registerForm.username,
+      email: registerForm.email,
+      password: registerForm.password,
+      nickname: registerForm.username,
+      verificationCode: registerForm.verificationCode,
+    })
     if (success) {
       activeTab.value = 'login'
+      Object.assign(registerForm, {
+        username: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        verificationCode: '',
+      })
     }
   } finally {
     loading.value = false
   }
 }
+
+onUnmounted(() => {
+  stopCountdown()
+})
 </script>
 
 <style scoped>
@@ -270,7 +345,6 @@ const handleRegister = async () => {
   margin-top: 24px;
 }
 
-/* Ant Design overrides within scoped style for specific adjustments */
 :deep(.ant-tabs-nav) {
   margin-bottom: 24px;
 }
@@ -313,6 +387,38 @@ const handleRegister = async () => {
   background: var(--primary-hover);
   transform: translateY(-1px);
   box-shadow: var(--shadow-lg);
+}
+
+.verify-code-wrapper {
+  display: flex;
+  gap: 12px;
+}
+
+.verify-input {
+  flex: 1;
+}
+
+.verify-btn {
+  width: 130px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  color: var(--primary-color);
+  font-weight: 600;
+  transition: all var(--transition-normal);
+  border-radius: var(--radius-md);
+}
+
+.verify-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%);
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+}
+
+.verify-btn:disabled {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: var(--border-color);
+  color: var(--text-tertiary);
 }
 
 @media (max-width: 768px) {

@@ -29,7 +29,45 @@ INSERT INTO users (username, password, email, nickname, role, status) VALUES
 ('admin', '$2a$10$7JB720yubVSZFyL9BbGfQe1C6PQRJZG6fGS.0FdJMR5N1h6W5GPTG', 'admin@example.com', 'Admin', 'ADMIN', 'ACTIVE');
 
 -- ============================================
--- 2. 对话会话表 (conversations)
+-- 2. 邮箱验证码表 (email_verification_codes)
+-- ============================================
+CREATE TABLE IF NOT EXISTS email_verification_codes (
+    id BIGSERIAL PRIMARY KEY,
+    email VARCHAR(100) NOT NULL,
+    code VARCHAR(10) NOT NULL,
+    type VARCHAR(20) NOT NULL,  -- REGISTER, RESET_PASSWORD, etc.
+    expired_at TIMESTAMP NOT NULL,
+    used BOOLEAN DEFAULT FALSE,
+    used_at TIMESTAMP,
+    ip_address VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 创建索引
+CREATE INDEX idx_email_verification_codes_email ON email_verification_codes(email);
+CREATE INDEX idx_email_verification_codes_type ON email_verification_codes(type);
+CREATE INDEX idx_email_verification_codes_expired_at ON email_verification_codes(expired_at);
+CREATE INDEX idx_email_verification_codes_used ON email_verification_codes(used);
+CREATE INDEX idx_email_verification_codes_email_type_used ON email_verification_codes(email, type, used);
+
+-- 创建复合索引用于查询未使用的验证码
+CREATE INDEX idx_email_verification_codes_query ON email_verification_codes(email, type, used, expired_at DESC);
+
+-- 添加注释
+COMMENT ON TABLE email_verification_codes IS '邮箱验证码表';
+COMMENT ON COLUMN email_verification_codes.email IS '邮箱地址';
+COMMENT ON COLUMN email_verification_codes.code IS '验证码';
+COMMENT ON COLUMN email_verification_codes.type IS '验证码类型（REGISTER-注册，RESET_PASSWORD-重置密码等）';
+COMMENT ON COLUMN email_verification_codes.expired_at IS '过期时间';
+COMMENT ON COLUMN email_verification_codes.used IS '是否已使用';
+COMMENT ON COLUMN email_verification_codes.used_at IS '使用时间';
+COMMENT ON COLUMN email_verification_codes.ip_address IS '请求IP地址';
+COMMENT ON COLUMN email_verification_codes.created_at IS '创建时间';
+COMMENT ON COLUMN email_verification_codes.updated_at IS '更新时间';
+
+-- ============================================
+-- 3. 对话会话表 (conversations)
 -- ============================================
 CREATE TABLE conversations (
     id BIGSERIAL PRIMARY KEY,
@@ -47,7 +85,7 @@ CREATE INDEX idx_conversations_status ON conversations(status);
 CREATE INDEX idx_conversations_updated_at ON conversations(updated_at DESC);
 
 -- ============================================
--- 3. 对话消息表 (messages)
+-- 4. 对话消息表 (messages)
 -- ============================================
 CREATE TABLE messages (
     id BIGSERIAL PRIMARY KEY,
@@ -83,7 +121,7 @@ CREATE TRIGGER trigger_update_conversation_stats
     EXECUTE FUNCTION update_conversation_stats();
 
 -- ============================================
--- 4. 知识库文档表 (knowledge_docs)
+-- 5. 知识库文档表 (knowledge_docs)
 -- ============================================
 CREATE TABLE knowledge_docs (
     id BIGSERIAL PRIMARY KEY,
@@ -113,7 +151,7 @@ CREATE INDEX idx_knowledge_docs_created_by ON knowledge_docs(created_by);
 CREATE INDEX idx_knowledge_docs_created_at ON knowledge_docs(created_at DESC);
 
 -- ============================================
--- 5. 知识库文档片段表 (knowledge_chunks)
+-- 6. 知识库文档片段表 (knowledge_chunks)
 -- ============================================
 CREATE TABLE knowledge_chunks (
     id BIGSERIAL PRIMARY KEY,
@@ -137,7 +175,7 @@ CREATE INDEX idx_knowledge_chunks_vector_id ON knowledge_chunks(vector_id);
 CREATE INDEX idx_knowledge_chunks_content_hash ON knowledge_chunks(content_hash);
 
 -- ============================================
--- 6. 检索日志表 (search_logs)
+-- 7. 检索日志表 (search_logs)
 -- ============================================
 CREATE TABLE search_logs (
     id BIGSERIAL PRIMARY KEY,
@@ -159,7 +197,7 @@ CREATE INDEX idx_search_logs_conversation_id ON search_logs(conversation_id);
 CREATE INDEX idx_search_logs_created_at ON search_logs(created_at);
 
 -- ============================================
--- 7. 系统配置表 (system_config)
+-- 8. 系统配置表 (system_config)
 -- ============================================
 CREATE TABLE system_config (
     id BIGSERIAL PRIMARY KEY,
@@ -202,7 +240,7 @@ INSERT INTO system_config (config_key, config_value, config_type, description) V
 ('system.description', '基于RAG技术的智能校园问答系统', 'STRING', '系统描述');
 
 -- ============================================
--- 8. 操作日志表 (operation_logs)
+-- 9. 操作日志表 (operation_logs)
 -- ============================================
 CREATE TABLE operation_logs (
     id BIGSERIAL PRIMARY KEY,
@@ -226,7 +264,7 @@ CREATE INDEX idx_operation_logs_operation_type ON operation_logs(operation_type)
 CREATE INDEX idx_operation_logs_created_at ON operation_logs(created_at);
 
 -- ============================================
--- 9. 知识库分类表 (knowledge_categories)
+-- 10. 知识库分类表 (knowledge_categories)
 -- ============================================
 CREATE TABLE knowledge_categories (
     id BIGSERIAL PRIMARY KEY,
@@ -246,7 +284,7 @@ CREATE INDEX idx_knowledge_categories_sort_order ON knowledge_categories(sort_or
 -- 注意：知识库分类由用户根据实际需求创建，此处不预设分类数据
 
 -- ============================================
--- 10. 系统统计表 (system_statistics)
+-- 11. 系统统计表 (system_statistics)
 -- ============================================
 CREATE TABLE system_statistics (
     id BIGSERIAL PRIMARY KEY,
@@ -339,5 +377,3 @@ CREATE INDEX idx_search_logs_retrieved_chunks ON search_logs USING gin(retrieved
 -- ============================================
 -- 备注
 -- ============================================
-
-
