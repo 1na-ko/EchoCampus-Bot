@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
+import com.echocampus.bot.utils.DateTimeUtil;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -24,7 +25,7 @@ public class HealthController {
     public Result<Map<String, Object>> health() {
         Map<String, Object> health = new HashMap<>();
         health.put("status", "UP");
-        health.put("timestamp", LocalDateTime.now());
+        health.put("timestamp", DateTimeUtil.now());
         health.put("version", "1.0.0");
         health.put("application", "EchoCampus-Bot");
         return Result.success(health);
