@@ -47,7 +47,7 @@ service.interceptors.response.use(
       if (res.code === 401) {
         localStorage.removeItem('token')
         localStorage.removeItem('userId')
-        window.location.href = '/login'
+        window.location.href = '/student4/login'
       }
       
       return Promise.reject(new Error(res.message || '请求失败'))
@@ -66,7 +66,7 @@ service.interceptors.response.use(
           antMessage.error('未授权，请重新登录')
           localStorage.removeItem('token')
           localStorage.removeItem('userId')
-          window.location.href = '/login'
+          window.location.href = '/student4/login'
           break
         case 403:
           antMessage.error('拒绝访问')

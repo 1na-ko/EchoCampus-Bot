@@ -122,7 +122,7 @@
                </div>
 
                <a-form :model="passwordForm" :rules="passwordRules" layout="vertical" class="profile-form">
-                  <a-form-item label="当前密码" name="oldPassword" class="form-item">
+                  <a-form-item label="当前密码" name="oldPassword" class="form-item password-form-item">
                   <a-input-password
                      v-model:value="passwordForm.oldPassword"
                      placeholder="输入当前使用的密码"
@@ -131,7 +131,7 @@
                   />
                   </a-form-item>
 
-                  <a-form-item label="新密码" name="newPassword" class="form-item">
+                  <a-form-item label="新密码" name="newPassword" class="form-item password-form-item">
                   <a-input-password
                      v-model:value="passwordForm.newPassword"
                      placeholder="设置新密码（至少6位）"
@@ -140,7 +140,7 @@
                   />
                   </a-form-item>
 
-                  <a-form-item label="确认新密码" name="confirmPassword" class="form-item">
+                  <a-form-item label="确认新密码" name="confirmPassword" class="form-item password-form-item">
                   <a-input-password
                      v-model:value="passwordForm.confirmPassword"
                      placeholder="再次输入以确认"
@@ -578,13 +578,17 @@ onMounted(async () => {
 
 /* Security Section specific */
 .security-intro {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   font-size: 14px;
   color: var(--text-tertiary);
   line-height: 1.6;
   background: rgba(249, 250, 251, 0.5);
-  padding: 16px;
+  padding: 12px 16px;
   border-radius: 12px;
+}
+
+.password-form-item {
+  margin-bottom: 24px;
 }
 
 .form-actions-bottom {
