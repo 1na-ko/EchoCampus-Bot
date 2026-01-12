@@ -1,4 +1,28 @@
-# IT知识问答机器人 - 项目结构设计文档
+# 智能校园/IT知识问答机器人 - 项目结构设计文档
+
+## 📋 项目概述
+
+本项目是一个基于**RAG(Retrieval-Augmented Generation)**技术的智能校园/IT知识问答机器人,采用前后端分离架构,结合Spring Boot、Vue.js、PostgreSQL、Milvus等现代化技术栈实现。
+
+### 核心功能
+- 💬 智能问答: 基于RAG技术提供准确的校园知识问答
+- 📚 知识库管理: 支持文档上传、分类、检索和向量化
+- 💾 对话历史: 支持多轮对话,保存对话记录
+- ⚙️ 系统配置: 灵活的系统参数配置
+- 📊 数据统计: 问答统计和系统监控
+
+### 支持的文档格式
+- **PDF** (.pdf) - 使用Apache PDFBox解析
+- **TXT** (.txt) - 使用Java原生API解析
+- **Markdown** (.md) - 使用Flexmark解析
+- **Word** (.docx, .doc) - 使用Apache POI解析
+- **PowerPoint** (.pptx, .ppt) - 使用Apache POI解析
+
+### 技术亮点
+- ✨ 使用**LangChain4j**进行智能文本切块(递归分割、语义保持)
+- ✨ 支持灵活的chunking策略配置
+- ✨ 根据文档类型自动选择最优解析和分割策略
+- ✨ 完整的文档解析器工厂模式实现
 
 ## 1. 系统整体架构
 
@@ -32,32 +56,46 @@
 ### 1.2 技术栈分层
 
 #### 前端层 (Presentation Layer)
-- **框架**: Vue.js 3 + TypeScript
-- **UI组件**: Element Plus / Ant Design Vue
-- **状态管理**: Pinia
-- **HTTP客户端**: Axios
+- **框架**: Vue.js 3.4.0 + TypeScript 5.3.3
+- **UI组件**: Ant Design Vue 4.1.1
+- **状态管理**: Pinia 2.1.7
+- **HTTP客户端**: Axios 1.6.5
 - **特色功能**: 响应式设计、Markdown渲染、代码高亮
 
 #### 后端层 (Business Logic Layer)
-- **框架**: Spring Boot 4.0.1
-- **ORM框架**: MyBatis-Plus
-- **数据库连接池**: Druid
-- **API文档**: Swagger/OpenAPI
-- **安全框架**: Spring Security (可选)
+- **框架**: Spring Boot 3.2.1
+- **ORM框架**: MyBatis-Plus 3.5.5
+- **数据库连接池**: Druid 1.2.20
+- **API文档**: Knife4j 4.4.0 (基于Swagger/OpenAPI)
+- **安全框架**: Spring Security (JWT认证)
+- **邮件服务**: Spring Boot Starter Mail
 - **依赖管理**: Maven
+- **文档解析**: LangChain4j 0.28.0 + Apache POI 5.2.5 + Apache PDFBox 3.0.1
+    - LangChain4j: 智能文本切块(递归分割、语义保持)
+    - LangChain4j OpenAI: OpenAI兼容接口支持
+    - Apache PDFBox: PDF文档解析
+    - Apache POI: Word/PowerPoint/Excel文档解析
+    - Flexmark: Markdown文档解析
+    - Jsoup: HTML解析
+- **工具库**:
+    - Apache Commons Lang3: 字符串工具
+    - Apache Commons IO: 文件操作工具
+    - Lombok: 简化Java代码
+    - Hutool: Java工具类库
+    - OkHttp: HTTP客户端
 
 #### 数据存储层 (Data Layer)
-- **关系型数据库**: PostgreSQL 18.1
-  - 存储用户信息、对话历史、知识库元数据
-- **向量数据库**: Milvus v2.6.8
-  - 存储知识库文档的向量化表示
-  - 支持高效的相似度检索
+- **关系型数据库**: PostgreSQL 15
+    - 存储用户信息、对话历史、知识库元数据
+- **向量数据库**: Milvus v2.3.4
+    - 存储知识库文档的向量化表示
+    - 支持高效的相似度检索
 
 #### AI服务层 (AI Service Layer)
 - **文本嵌入**: 阿里云百炼平台 Qwen3-Embedding (text-embedding-v3)
-  - 将文本转换为1536维高维向量表示
+  - 将文本转换为1024维高维向量表示
   - API地址: https://dashscope.aliyuncs.com/compatible-mode/v1
-- **大语言模型**: DeepSeek V3.2 API
+- **大语言模型**: DeepSeek API (deepseek-chat)
   - 基于检索内容生成自然语言答案
   - API地址: https://api.deepseek.com/v1/chat/completions
 
@@ -71,13 +109,13 @@
     ↓
 [后端] 问题预处理(清洗、规范化)
     ↓
-[阿里云Qwen3-Embedding] 将问题转换为1536维向量
+[阿里云Qwen3-Embedding] 将问题转换为1024维向量
     ↓
 [Milvus] 向量相似度检索,获取Top-K相关文档
     ↓
 [后端] 构建Prompt(系统提示 + 检索文档 + 用户问题)
     ↓
-[DeepSeek V3.2 API] 生成答案
+[DeepSeek API] 生成答案
     ↓
 [后端] 后处理(格式化、过滤)
     ↓
@@ -94,7 +132,7 @@
     ↓
 [LangChain4j] 智能文本切块(递归分割、语义保持)
     ↓
-[阿里云Qwen3-Embedding] 文本块向量化(1536维)
+[阿里云Qwen3-Embedding] 文本块向量化(1024维)
     ↓
 [Milvus] 存储向量 + [PostgreSQL] 存储元数据
     ↓
@@ -207,9 +245,9 @@ INSERT INTO system_config (config_key, config_value, description) VALUES
 ('rag.temperature', '0.7', 'AI生成答案的温度参数'),
 ('rag.max_tokens', '1000', 'AI生成答案的最大token数'),
 ('milvus.collection_name', 'it_knowledge', 'Milvus向量集合名称'),
-('milvus.dimension', '1536', '向量维度(根据Qwen3-Embedding模型)'),
+('milvus.dimension', '1024', '向量维度(根据Qwen3-Embedding模型)'),
 ('embedding.model', 'text-embedding-v3', 'Embedding模型(阿里云百炼平台)'),
-('llm.model', 'deepseek-v3.2', 'LLM模型(DeepSeek V3.2)');
+('llm.model', 'deepseek-chat', 'LLM模型(DeepSeek)');
 ```
 
 ### 2.2 Milvus 向量数据库设计
@@ -229,7 +267,7 @@ INSERT INTO system_config (config_key, config_value, description) VALUES
         {
             "name": "vector",  # 文本向量
             "type": "float_vector",
-            "dimension": 1536  # 根据Qwen3-Embedding模型(text-embedding-v3)
+            "dimension": 1024  # 根据Qwen3-Embedding模型(text-embedding-v3)
         },
         {
             "name": "chunk_id",  # 关联的知识片段ID
@@ -276,7 +314,7 @@ INSERT INTO system_config (config_key, config_value, description) VALUES
 ### 3.1 基础规范
 
 - **Base URL**: `/api/v1`
-- **认证方式**: JWT Token (可选)
+- **认证方式**: JWT Token
 - **数据格式**: JSON
 - **统一响应格式**:
 ```json
@@ -416,7 +454,7 @@ DELETE /api/v1/knowledge/docs/{docId}
 POST /api/v1/knowledge/docs/{docId}/reindex
 ```
 
-### 3.4 用户管理接口 (可选)
+### 3.4 用户管理接口
 
 #### 3.4.1 用户注册
 ```http
@@ -481,69 +519,130 @@ Content-Type: application/json
 ### 5.1 Maven项目结构
 
 ```
-it-qabot/
-├── src/
-│   ├── main/
-│   │   ├── java/
-│   │   │   └── com/example/itqabot/
-│   │   │       ├── ItQabotApplication.java          # 启动类
-│   │   │       ├── config/                          # 配置类
-│   │   │       │   ├── MyBatisConfig.java
-│   │   │       │   ├── MilvusConfig.java
-│   │   │       │   ├── AiServiceConfig.java
-│   │   │       │   └── SwaggerConfig.java
-│   │   │       ├── controller/                      # 控制器
-│   │   │       │   ├── ChatController.java
-│   │   │       │   ├── KnowledgeController.java
-│   │   │       │   └── UserController.java
-│   │   │       ├── service/                         # 服务层
-│   │   │       │   ├── ChatService.java
-│   │   │       │   ├── KnowledgeService.java
-│   │   │       │   └── AiService.java
-│   │   │       ├── service/impl/                    # 服务实现
-│   │   │       │   ├── ChatServiceImpl.java
-│   │   │       │   ├── KnowledgeServiceImpl.java
-│   │   │       │   └── AiServiceImpl.java
-│   │   │       ├── mapper/                          # MyBatis Mapper
-│   │   │       │   ├── UserMapper.java
-│   │   │       │   ├── ConversationMapper.java
-│   │   │       │   └── KnowledgeDocMapper.java
-│   │   │       ├── entity/                          # 实体类
-│   │   │       │   ├── User.java
-│   │   │       │   ├── Conversation.java
-│   │   │       │   └── KnowledgeDoc.java
-│   │   │       ├── dto/                             # 数据传输对象
-│   │   │       │   ├── ChatRequest.java
-│   │   │       │   ├── ChatResponse.java
-│   │   │       │   └── KnowledgeDocDTO.java
-│   │   │       ├── utils/                           # 工具类
-│   │   │       │   ├── MilvusClient.java
-│   │   │       │   ├── FileUtil.java
-│   │   │       │   └── JsonUtil.java
-│   │   │       └── constants/                       # 常量类
-│   │   │           └── AppConstants.java
-│   │   └── resources/
-│   │       ├── application.yml                      # 主配置文件
-│   │       ├── application-dev.yml                  # 开发环境配置
-│   │       ├── application-prod.yml                 # 生产环境配置
-│   │       ├── mapper/                              # MyBatis XML映射
-│   │       │   ├── UserMapper.xml
-│   │       │   ├── ConversationMapper.xml
-│   │       │   └── KnowledgeDocMapper.xml
-│   │       └── static/                              # 静态资源
-│   └── test/                                        # 测试代码
-├── target/
-├── pom.xml                                          # Maven配置
-└── README.md                                        # 项目说明
+EchoCampus-Bot/
+├── backend/
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/
+│   │   │   │   └── com/echocampus/bot/
+│   │   │   │       ├── EchoCampusBotApplication.java          # 启动类
+│   │   │   │       ├── config/                                # 配置类
+│   │   │   │       │   ├── SecurityConfig.java                # Spring Security配置
+│   │   │   │       │   ├── WebConfig.java                    # Web配置(CORS)
+│   │   │   │       │   ├── AiConfig.java                     # AI服务配置
+│   │   │   │       │   ├── AiServiceConfig.java              # AI服务配置(OpenAI兼容)
+│   │   │   │       │   ├── MilvusConfig.java                 # Milvus向量数据库配置
+│   │   │   │       │   └── MyBatisPlusConfig.java            # MyBatis-Plus配置
+│   │   │   │       ├── controller/                            # 控制器
+│   │   │   │       │   ├── ChatController.java               # 聊天接口
+│   │   │   │       │   ├── KnowledgeController.java          # 知识库接口
+│   │   │   │       │   └── UserController.java               # 用户接口
+│   │   │   │       ├── service/                               # 服务层
+│   │   │   │       │   ├── ChatService.java                  # 聊天服务
+│   │   │   │       │   ├── KnowledgeService.java             # 知识库服务
+│   │   │   │       │   ├── AiService.java                    # AI服务
+│   │   │   │       │   └── UserService.java                  # 用户服务
+│   │   │   │       ├── service/impl/                          # 服务实现
+│   │   │   │       │   ├── ChatServiceImpl.java
+│   │   │   │       │   ├── KnowledgeServiceImpl.java
+│   │   │   │       │   ├── AiServiceImpl.java
+│   │   │   │       │   └── UserServiceImpl.java
+│   │   │   │       ├── mapper/                                # MyBatis Mapper
+│   │   │   │       │   ├── UserMapper.java
+│   │   │   │       │   ├── ConversationMapper.java
+│   │   │   │       │   ├── MessageMapper.java
+│   │   │   │       │   ├── KnowledgeDocMapper.java
+│   │   │   │       │   └── KnowledgeChunkMapper.java
+│   │   │   │       ├── entity/                                # 实体类
+│   │   │   │       │   ├── User.java
+│   │   │   │       │   ├── Conversation.java
+│   │   │   │       │   ├── Message.java
+│   │   │   │       │   ├── KnowledgeDoc.java
+│   │   │   │       │   └── KnowledgeChunk.java
+│   │   │   │       ├── dto/                                   # 数据传输对象
+│   │   │   │       │   ├── ChatRequest.java
+│   │   │   │       │   ├── ChatResponse.java
+│   │   │   │       │   └── KnowledgeDocDTO.java
+│   │   │   │       ├── parser/                                # 文档解析器
+│   │   │   │       │   ├── DocumentParser.java               # 解析器接口
+│   │   │   │       │   ├── PdfDocumentParser.java            # PDF解析器
+│   │   │   │       │   ├── TxtDocumentParser.java            # TXT解析器
+│   │   │   │       │   ├── MarkdownDocumentParser.java       # Markdown解析器
+│   │   │   │       │   ├── WordDocumentParser.java           # Word解析器
+│   │   │   │       │   ├── PptDocumentParser.java            # PPT解析器
+│   │   │   │       │   └── DocumentParserFactory.java        # 解析器工厂
+│   │   │   │       ├── utils/                                 # 工具类
+│   │   │   │       │   ├── JwtUtil.java                      # JWT工具
+│   │   │   │       │   ├── FileUtil.java                     # 文件工具
+│   │   │   │       │   └── JsonUtil.java                     # JSON工具
+│   │   │   │       └── constants/                             # 常量类
+│   │   │   │           └── AppConstants.java
+│   │   │   └── resources/
+│   │   │       ├── application.yml                            # 主配置文件
+│   │   │       ├── application-local.yml                      # 本地环境配置
+│   │   │       ├── application-dev.yml                        # 开发环境配置
+│   │   │       ├── application-prod.yml                       # 生产环境配置
+│   │   │       └── mapper/                                    # MyBatis XML映射
+│   │   └── test/                                              # 测试代码
+│   ├── pom.xml                                                # Maven配置
+│   └── uploads/                                               # 上传文件目录
+├── frontend/
+│   ├── public/                                                # 公共资源
+│   │   ├── index.html
+│   │   └── favicon.ico
+│   ├── src/
+│   │   ├── assets/                                            # 静态资源
+│   │   │   ├── images/
+│   │   │   └── styles/
+│   │   ├── components/                                        # 公共组件
+│   │   │   ├── ChatMessage.vue
+│   │   │   ├── FileUpload.vue
+│   │   │   └── Pagination.vue
+│   │   ├── views/                                             # 页面组件
+│   │   │   ├── Chat.vue                                       # 聊天主页面
+│   │   │   ├── Knowledge.vue                                  # 知识库管理
+│   │   │   ├── Settings.vue                                   # 系统设置
+│   │   │   └── Login.vue                                      # 登录页面
+│   │   ├── api/                                               # API接口
+│   │   │   ├── chat.ts
+│   │   │   ├── knowledge.ts
+│   │   │   └── user.ts
+│   │   ├── stores/                                            # Pinia状态管理
+│   │   │   ├── chat.ts
+│   │   │   ├── knowledge.ts
+│   │   │   └── user.ts
+│   │   ├── utils/                                             # 工具函数
+│   │   │   ├── request.ts                                     # Axios封装
+│   │   │   ├── auth.ts
+│   │   │   └── format.ts
+│   │   ├── types/                                             # TypeScript类型定义
+│   │   │   ├── chat.d.ts
+│   │   │   ├── knowledge.d.ts
+│   │   │   └── user.d.ts
+│   │   ├── router/                                            # 路由配置
+│   │   │   └── index.ts
+│   │   ├── App.vue
+│   │   └── main.ts
+│   ├── .env                                                   # 环境变量
+│   ├── .env.development
+│   ├── .env.production
+│   ├── vite.config.ts                                         # Vite配置
+│   ├── tsconfig.json                                          # TypeScript配置
+│   └── package.json
+├── docker-compose.yml                                         # Docker编排
+├── Dockerfile                                                 # Docker镜像构建
+└── README.md                                                  # 项目说明
 ```
 
 ### 5.2 核心模块说明
 
 #### 5.2.1 配置模块 (config)
-- **MyBatisConfig**: MyBatis-Plus配置,分页插件
+- **SecurityConfig**: Spring Security配置,JWT认证过滤器
+- **WebConfig**: Web配置,CORS跨域配置
+- **AiConfig**: AI服务配置,阿里云百炼平台Qwen3-Embedding和DeepSeek API密钥
+- **AiServiceConfig**: AI服务配置(OpenAI兼容接口)
 - **MilvusConfig**: Milvus客户端配置,连接向量数据库
-- **AiServiceConfig**: AI服务配置,阿里云百炼平台Qwen3-Embedding和DeepSeek V3.2 API密钥
-- **SwaggerConfig**: API文档配置
+- **MyBatisPlusConfig**: MyBatis-Plus配置,分页插件
 
 #### 5.2.2 控制器模块 (controller)
 - **ChatController**: 聊天相关接口
@@ -554,9 +653,19 @@ it-qabot/
 - **ChatService**: 对话服务,处理问答逻辑
 - **KnowledgeService**: 知识库服务,文档CRUD和向量化
 - **AiService**: AI服务,调用Embedding和LLM API
+- **UserService**: 用户服务,用户认证和管理
 
-#### 5.2.4 工具模块 (utils)
-- **MilvusClient**: Milvus Java SDK封装
+#### 5.2.4 文档解析模块 (parser)
+- **DocumentParser**: 文档解析器接口
+- **PdfDocumentParser**: PDF文档解析器
+- **TxtDocumentParser**: TXT文档解析器
+- **MarkdownDocumentParser**: Markdown文档解析器
+- **WordDocumentParser**: Word文档解析器
+- **PptDocumentParser**: PPT文档解析器
+- **DocumentParserFactory**: 文档解析器工厂,根据文件类型选择解析器
+
+#### 5.2.5 工具模块 (utils)
+- **JwtUtil**: JWT令牌生成和验证
 - **FileUtil**: 文件处理工具(上传、解析、分块)
 - **JsonUtil**: JSON序列化工具
 
@@ -564,90 +673,149 @@ it-qabot/
 
 ```xml
 <dependencies>
-    <!-- Spring Boot Starter -->
+    <!-- Spring Boot Starters (3.2.1) -->
     <dependency>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-web</artifactId>
     </dependency>
-    
-    <!-- Spring Boot Test -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-mail</artifactId>
+    </dependency>
     <dependency>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-test</artifactId>
         <scope>test</scope>
     </dependency>
-    
+
     <!-- MyBatis-Plus -->
     <dependency>
         <groupId>com.baomidou</groupId>
-        <artifactId>mybatis-plus-boot-starter</artifactId>
-        <version>3.5.3</version>
+        <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+        <version>3.5.5</version>
     </dependency>
-    
-    <!-- PostgreSQL -->
+
+    <!-- 数据库与连接池 -->
     <dependency>
         <groupId>org.postgresql</groupId>
         <artifactId>postgresql</artifactId>
         <scope>runtime</scope>
     </dependency>
-    
-    <!-- Druid连接池 -->
     <dependency>
         <groupId>com.alibaba</groupId>
-        <artifactId>druid-spring-boot-starter</artifactId>
-        <version>1.2.16</version>
+        <artifactId>druid-spring-boot-3-starter</artifactId>
+        <version>1.2.20</version>
     </dependency>
-    
-    <!-- Milvus Java SDK -->
+
+    <!-- 向量数据库 -->
     <dependency>
         <groupId>io.milvus</groupId>
         <artifactId>milvus-sdk-java</artifactId>
         <version>2.3.4</version>
     </dependency>
-    
-    <!-- HTTP客户端 -->
+
+    <!-- RAG相关 -->
     <dependency>
-        <groupId>org.apache.httpcomponents.client5</groupId>
-        <artifactId>httpclient5</artifactId>
+        <groupId>dev.langchain4j</groupId>
+        <artifactId>langchain4j</artifactId>
+        <version>0.28.0</version>
     </dependency>
-    
-    <!-- JSON处理 -->
     <dependency>
-        <groupId>com.fasterxml.jackson.core</groupId>
-        <artifactId>jackson-databind</artifactId>
+        <groupId>dev.langchain4j</groupId>
+        <artifactId>langchain4j-open-ai</artifactId>
+        <version>0.28.0</version>
     </dependency>
-    
-    <!-- 工具类 -->
-    <dependency>
-        <groupId>org.apache.commons</groupId>
-        <artifactId>commons-lang3</artifactId>
-    </dependency>
-    
-    <dependency>
-        <groupId>commons-io</groupId>
-        <artifactId>commons-io</artifactId>
-        <version>2.11.0</version>
-    </dependency>
-    
+
     <!-- 文档解析 -->
     <dependency>
         <groupId>org.apache.pdfbox</groupId>
         <artifactId>pdfbox</artifactId>
-        <version>2.0.29</version>
+        <version>3.0.1</version>
     </dependency>
-    
-    <!-- Swagger API文档 -->
+    <dependency>
+        <groupId>org.apache.poi</groupId>
+        <artifactId>poi</artifactId>
+        <version>5.2.5</version>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.poi</groupId>
+        <artifactId>poi-ooxml</artifactId>
+        <version>5.2.5</version>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.poi</groupId>
+        <artifactId>poi-scratchpad</artifactId>
+        <version>5.2.5</version>
+    </dependency>
+    <dependency>
+        <groupId>com.vladsch.flexmark</groupId>
+        <artifactId>flexmark-all</artifactId>
+        <version>0.64.8</version>
+    </dependency>
+    <dependency>
+        <groupId>org.jsoup</groupId>
+        <artifactId>jsoup</artifactId>
+        <version>1.17.2</version>
+    </dependency>
+
+    <!-- HTTP客户端 -->
+    <dependency>
+        <groupId>com.squareup.okhttp3</groupId>
+        <artifactId>okhttp</artifactId>
+        <version>4.12.0</version>
+    </dependency>
+
+    <!-- API文档与JWT -->
     <dependency>
         <groupId>com.github.xiaoymin</groupId>
-        <artifactId>knife4j-spring-boot-starter</artifactId>
-        <version>4.3.0</version>
+        <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+        <version>4.4.0</version>
     </dependency>
-    
-    <!-- JWT (可选) -->
     <dependency>
         <groupId>io.jsonwebtoken</groupId>
         <artifactId>jjwt-api</artifactId>
-        <version>0.11.5</version>
+        <version>0.12.3</version>
+    </dependency>
+    <dependency>
+        <groupId>io.jsonwebtoken</groupId>
+        <artifactId>jjwt-impl</artifactId>
+        <version>0.12.3</version>
+        <scope>runtime</scope>
+    </dependency>
+    <dependency>
+        <groupId>io.jsonwebtoken</groupId>
+        <artifactId>jjwt-jackson</artifactId>
+        <version>0.12.3</version>
+        <scope>runtime</scope>
+    </dependency>
+
+    <!-- 常用工具 -->
+    <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>commons-io</groupId>
+        <artifactId>commons-io</artifactId>
+        <version>2.15.1</version>
+    </dependency>
+    <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <optional>true</optional>
+    </dependency>
+    <dependency>
+        <groupId>cn.hutool</groupId>
+        <artifactId>hutool-all</artifactId>
+        <version>5.8.24</version>
     </dependency>
 </dependencies>
 ```
@@ -657,7 +825,7 @@ it-qabot/
 ### 6.1 Vue.js项目结构
 
 ```
-it-qabot-frontend/
+frontend/
 ├── public/                              # 公共资源
 │   ├── index.html
 │   └── favicon.ico
@@ -679,8 +847,9 @@ it-qabot-frontend/
 │   │   ├── knowledge.ts
 │   │   └── user.ts
 │   ├── stores/                          # Pinia状态管理
-│   │   ├── user.ts
-│   │   └── app.ts
+│   │   ├── chat.ts
+│   │   ├── knowledge.ts
+│   │   └── user.ts
 │   ├── utils/                           # 工具函数
 │   │   ├── request.ts                   # Axios封装
 │   │   ├── auth.ts
@@ -698,8 +867,7 @@ it-qabot-frontend/
 ├── .env.production
 ├── vite.config.ts                       # Vite配置
 ├── tsconfig.json                        # TypeScript配置
-├── package.json
-└── README.md
+└── package.json
 ```
 
 ### 6.2 核心依赖 (package.json)
@@ -707,20 +875,26 @@ it-qabot-frontend/
 ```json
 {
   "dependencies": {
-    "vue": "^3.3.4",
-    "vue-router": "^4.2.4",
-    "pinia": "^2.1.6",
-    "axios": "^1.5.0",
-    "element-plus": "^2.3.9",
-    "@element-plus/icons-vue": "^2.1.0",
-    "marked": "^7.0.5",
-    "highlight.js": "^11.8.0"
+    "vue": "^3.4.0",
+    "vue-router": "^4.2.5",
+    "pinia": "^2.1.7",
+    "axios": "^1.6.5",
+    "ant-design-vue": "^4.1.1",
+    "@ant-design/icons-vue": "^7.0.1",
+    "marked": "^11.1.1",
+    "highlight.js": "^11.9.0",
+    "marked-highlight": "^2.1.0",
+    "dayjs": "^1.11.10",
+    "@vueuse/core": "^10.7.2"
   },
   "devDependencies": {
-    "@types/node": "^20.5.0",
-    "typescript": "^5.1.6",
-    "vite": "^4.4.5",
-    "vue-tsc": "^1.8.5"
+    "@types/node": "^20.11.5",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.11",
+    "vue-tsc": "^1.8.27",
+    "@vitejs/plugin-vue": "^5.0.3",
+    "unplugin-vue-components": "^0.26.0",
+    "unplugin-auto-import": "^0.17.3"
   }
 }
 ```
@@ -765,10 +939,10 @@ services:
   # PostgreSQL数据库
   postgres:
     image: postgres:15
-    container_name: it-qabot-postgres
+    container_name: echocampus-postgres
     environment:
-      POSTGRES_DB: it_qabot
-      POSTGRES_USER: qabot
+      POSTGRES_DB: echocampus_bot
+      POSTGRES_USER: echocampus
       POSTGRES_PASSWORD: your_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -780,7 +954,7 @@ services:
   # Milvus向量数据库
   milvus:
     image: milvusdb/milvus:v2.3.4
-    container_name: it-qabot-milvus
+    container_name: echocampus-milvus
     environment:
       ETCD_ENDPOINTS: etcd:2379
       MINIO_ADDRESS: minio:9000
@@ -796,7 +970,7 @@ services:
   # Milvus依赖 - etcd
   etcd:
     image: quay.io/coreos/etcd:v3.5.0
-    container_name: it-qabot-etcd
+    container_name: echocampus-etcd
     environment:
       ETCD_ADVERTISE_CLIENT_URLS: "http://etcd:2379"
       ETCD_LISTEN_CLIENT_URLS: "http://0.0.0.0:2379"
@@ -808,7 +982,7 @@ services:
   # Milvus依赖 - MinIO
   minio:
     image: minio/minio:RELEASE.2023-01-25T00-19-54Z
-    container_name: it-qabot-minio
+    container_name: echocampus-minio
     environment:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
@@ -822,30 +996,30 @@ services:
 
   # 后端服务
   backend:
-    build: .
-    container_name: it-qabot-backend
+    build: ./backend
+    container_name: echocampus-backend
     environment:
       SPRING_PROFILES_ACTIVE: prod
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: it_qabot
-      DB_USER: qabot
+      DB_NAME: echocampus_bot
+      DB_USER: echocampus
       DB_PASSWORD: your_password
-      MILvus_HOST: milvus
-      MILvus_PORT: 19530
+      MILVUS_HOST: milvus
+      MILVUS_PORT: 19530
     ports:
       - "8080:8080"
     depends_on:
       - postgres
       - milvus
     volumes:
-      - ./uploads:/app/uploads
+      - ./backend/uploads:/app/uploads
     restart: unless-stopped
 
   # 前端Nginx
   nginx:
     image: nginx:alpine
-    container_name: it-qabot-nginx
+    container_name: echocampus-nginx
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf
       - ./frontend/dist:/usr/share/nginx/html
@@ -879,7 +1053,7 @@ RUN mvn clean package -DskipTests
 FROM openjdk:17-jdk-slim
 
 WORKDIR /app
-COPY --from=build /app/target/it-qabot-*.jar app.jar
+COPY --from=build /app/target/*.jar app.jar
 
 EXPOSE 8080
 
@@ -942,8 +1116,8 @@ http {
 #### 7.3.2 部署流程
 ```bash
 # 1. 克隆项目代码
-git clone https://github.com/yourusername/it-qabot.git
-cd it-qabot
+git clone https://github.com/yourusername/EchoCampus-Bot.git
+cd EchoCampus-Bot
 
 # 2. 配置环境变量
 cp .env.example .env
@@ -977,12 +1151,12 @@ docker-compose exec backend java -jar app.jar --init-milvus
 - [ ] 设计数据库表结构,创建实体类
 - [ ] 实现MyBatis-Plus集成和基础CRUD
 - [ ] 创建Vue.js前端项目,配置路由和基础布局
-- [ ] 实现用户登录注册功能(可选)
+- [ ] 实现用户登录注册功能
 
 ### 8.2 第二阶段 (Week 2): 核心功能开发
 - [ ] 集成Milvus向量数据库,创建集合
 - [ ] 实现阿里云百炼平台Qwen3-Embedding API调用(text-embedding-v3)
-- [ ] 实现DeepSeek V3.2 API调用
+- [ ] 实现DeepSeek API调用(deepseek-chat)
 - [ ] 开发RAG问答核心逻辑
 - [ ] 实现对话历史管理
 - [ ] 开发聊天界面,支持消息展示和发送
@@ -1006,7 +1180,7 @@ docker-compose exec backend java -jar app.jar --init-milvus
    - 去除噪声(特殊字符、格式标记)
 
 2. **向量检索**:
-   - 选择合适的向量维度(Qwen3-Embedding: 1536维)
+   - 选择合适的向量维度(Qwen3-Embedding: 1024维)
    - 设置合理的Top-K值(通常3-5个)
    - 相似度阈值过滤(避免不相关内容)
 
@@ -1164,6 +1338,8 @@ chunking:
 - **文件上传**: 限制文件类型和大小,防止恶意文件
 - **SQL注入**: 使用MyBatis参数化查询
 - **XSS防护**: 前端对用户输入进行转义
+- **JWT认证**: 使用Spring Security + JWT进行用户认证
+- **CORS配置**: 合理配置跨域访问策略
 
 ## 10. 测试方案
 
@@ -1210,12 +1386,12 @@ public void testUploadDocument() {
 # application.yml
 logging:
   level:
-    com.example.itqabot: INFO
+    com.echocampus.bot: INFO
     io.milvus: WARN
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n"
   file:
-    name: logs/it-qabot.log
+    name: logs/echocampus-bot.log
     max-size: 100MB
     max-history: 30
 ```
@@ -1236,5 +1412,32 @@ logging:
 - ✅ 向量数据库支持高效的语义检索
 - ✅ 容器化部署,易于扩展和维护
 - ✅ 完整的知识库管理功能
+- ✅ 使用**LangChain4j**进行智能文本切块,保证语义完整性
+- ✅ 支持**多种文档格式**(PDF、TXT、MD、DOCX、PPT、PPTX)
+- ✅ 灵活的chunking策略配置,根据文档类型自动优化
+- ✅ 完整的文档解析器工厂模式实现
+- ✅ Spring Security + JWT认证机制
+- ✅ 支持邮件通知功能
 
-通过三周的课程设计,学生可以全面掌握Java后端开发、前端Vue.js开发、数据库设计、AI接口集成和云部署等全栈技能,为未来的职业发展打下坚实基础。
+## 📚 相关文档
+
+- [数据库设计](./docs/数据库设计.sql) - PostgreSQL数据库结构设计
+- [API接口设计](./docs/API接口设计.yaml) - RESTful API接口文档
+- [IT知识问答机器人_项目结构设计](./docs/IT知识问答机器人_项目结构设计.md) - 详细的项目结构设计
+- [前端界面设计](./docs/前端界面设计.md) - 前端界面设计规范
+- [项目快速入门指南](./docs/项目快速入门指南.md) - 快速开始指南
+- [文档解析器实现指南](./docs/文档解析器实现指南.md) - 文档解析器详细实现指南
+- [代码质量审查报告](./代码质量审查报告.md) - 代码质量审查报告
+
+## 🔗 参考资源
+
+- [Spring Boot官方文档](https://spring.io/projects/spring-boot)
+- [Vue.js 3官方文档](https://vuejs.org/)
+- [LangChain4j官方文档](https://docs.langchain4j.dev/)
+- [Milvus向量数据库](https://milvus.io/)
+- [Apache PDFBox](https://pdfbox.apache.org/)
+- [Apache POI](https://poi.apache.org/)
+- [DeepSeek API](https://platform.deepseek.com/)
+- [阿里云百炼平台](https://bailian.console.aliyun.com/)
+
+---
