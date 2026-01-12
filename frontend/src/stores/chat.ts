@@ -15,6 +15,7 @@ interface ConversationStreamState {
   streamingSources: SourceDoc[]
   isSending: boolean
   abortController: AbortController | null
+  doneReceived: boolean
 }
 
 interface ChatState {
@@ -98,6 +99,7 @@ export const useChatStore = defineStore('chat', {
         streamingSources: [],
         isSending: false,
         abortController: null,
+        doneReceived: false,
       }
     },
 
@@ -402,7 +404,7 @@ export const useChatStore = defineStore('chat', {
           streamState.streamingMessageId = null
           streamState.streamingSources = []
           streamState.abortController = null
-          streamState.processingStage = 'idle'
+          streamState.doneReceived = true
         },
         
         onError: (error: Error | string) => {
@@ -410,6 +412,15 @@ export const useChatStore = defineStore('chat', {
           
           // 如果是 AbortError，说明是被主动取消的，不显示错误
           if (error instanceof Error && error.name === 'AbortError') {
+            streamState.processingStage = 'idle'
+            streamState.processingStatus = ''
+            streamState.isSending = false
+            streamState.abortController = null
+            return
+          }
+          
+          // 如果已经收到了done事件，说明流式输出已经完成，连接关闭是正常的，不显示错误
+          if (streamState.doneReceived) {
             streamState.processingStage = 'idle'
             streamState.processingStatus = ''
             streamState.isSending = false

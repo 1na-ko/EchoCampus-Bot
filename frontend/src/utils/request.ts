@@ -6,6 +6,7 @@ import type { ApiResponse } from '@/types'
 const service: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://150.158.97.39:8083/api',
   timeout: 600000,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -150,6 +151,7 @@ export function createSSERequest(
     },
     body: JSON.stringify(data),
     signal: controller.signal,
+    credentials: 'include',
   })
     .then(async response => {
       if (!response.ok) {
@@ -212,8 +214,9 @@ export function createSSERequest(
             }
           }
         } catch (error) {
-          if ((error as Error).name !== 'AbortError') {
-            onError?.(error as Error)
+          const errorObj = error as Error
+          if (errorObj.name !== 'AbortError') {
+            onError?.(errorObj)
           }
         }
       }
