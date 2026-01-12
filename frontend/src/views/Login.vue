@@ -3,7 +3,7 @@
     <div class="login-box">
       <div class="login-header">
         <h1 class="login-title">EchoCampus Bot</h1>
-        <p class="login-subtitle">智能IT知识问答助手</p>
+        <p class="login-subtitle">智能校园问答助手</p>
       </div>
 
       <a-tabs v-model:activeKey="activeTab" centered>

@@ -79,7 +79,7 @@ public class EmailServiceImpl implements EmailService {
                 "  }\n" +
                 "  .header {\n" +
                 "    background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);\n" +
-                "    padding: 48px 40px;\n" +
+                "    padding: 38px 40px;\n" +
                 "    text-align: center;\n" +
                 "  }\n" +
                 "  .logo {\n" +
@@ -158,7 +158,7 @@ public class EmailServiceImpl implements EmailService {
                 "              </div>\n" +
                 "              \n" +
                 "              <p class=\"text-secondary\" style=\"font-size: 13px; margin: 0; background-color: #fef2f2; color: #c026d3; padding: 12px; border-radius: 8px; border: 1px solid #fecaca;\">\n" +
-                "                <span style=\"margin-right: 4px;\">⚠️</span>若非本人操作，请忽略此邮件。您的账号可能存在风险，建议及时修改密码。\n" +
+                "                <span style=\"margin-right: 4px;\">⚠️</span>若非本人操作，请忽略此邮件，但您的账号可能存在风险，建议及时修改密码。\n" +
                 "              </p>\n" +
                 "            </td>\n" +
                 "          </tr>\n" +
