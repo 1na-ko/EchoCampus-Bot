@@ -1,6 +1,5 @@
 package com.echocampus.bot.controller;
 
-import com.echocampus.bot.annotation.RequireAuth;
 import com.echocampus.bot.common.Result;
 import com.echocampus.bot.dto.request.LoginRequest;
 import com.echocampus.bot.dto.request.RegisterWithCodeRequest;
@@ -65,7 +64,6 @@ public class UserController {
 
     @Operation(summary = "获取当前用户信息", description = "获取当前登录用户的信息")
     @GetMapping("/user/profile")
-    @RequireAuth
     public Result<User> getCurrentUser(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         User user = userService.getUserById(userId);
@@ -75,7 +73,6 @@ public class UserController {
 
     @Operation(summary = "更新用户信息", description = "更新当前用户的个人信息")
     @PutMapping("/user/profile")
-    @RequireAuth
     public Result<Void> updateProfile(HttpServletRequest request, @RequestBody User user) {
         Long userId = (Long) request.getAttribute("userId");
         user.setId(userId);
@@ -88,7 +85,6 @@ public class UserController {
 
     @Operation(summary = "修改密码", description = "修改用户密码")
     @PutMapping("/user/password")
-    @RequireAuth
     public Result<Void> changePassword(HttpServletRequest request,
             @Parameter(description = "旧密码") @RequestParam String oldPassword,
             @Parameter(description = "新密码") @RequestParam String newPassword,
