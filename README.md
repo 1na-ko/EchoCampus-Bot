@@ -234,20 +234,151 @@ CREATE TABLE system_config (
     id BIGSERIAL PRIMARY KEY,
     config_key VARCHAR(100) UNIQUE NOT NULL,
     config_value TEXT,
+    config_type VARCHAR(20) DEFAULT 'STRING',  -- STRING, NUMBER, BOOLEAN, JSON
     description VARCHAR(500),
+    is_editable BOOLEAN DEFAULT TRUE,
     updated_by BIGINT REFERENCES users(id),
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 初始化数据
-INSERT INTO system_config (config_key, config_value, description) VALUES 
-('rag.top_k', '5', 'RAG检索返回的最相关文档数量'),
-('rag.temperature', '0.7', 'AI生成答案的温度参数'),
-('rag.max_tokens', '1000', 'AI生成答案的最大token数'),
-('milvus.collection_name', 'it_knowledge', 'Milvus向量集合名称'),
-('milvus.dimension', '1024', '向量维度(根据Qwen3-Embedding模型)'),
-('embedding.model', 'text-embedding-v3', 'Embedding模型(阿里云百炼平台)'),
-('llm.model', 'deepseek-chat', 'LLM模型(DeepSeek)');
+INSERT INTO system_config (config_key, config_value, config_type, description) VALUES 
+('rag.top_k', '5', 'NUMBER', 'RAG检索返回的最相关文档数量'),
+('rag.temperature', '0.7', 'NUMBER', 'AI生成答案的温度参数(0.0-1.0)'),
+('rag.max_tokens', '1000', 'NUMBER', 'AI生成答案的最大token数'),
+('rag.similarity_threshold', '0.7', 'NUMBER', '相似度阈值,低于此值的结果将被过滤'),
+('milvus.collection_name', 'echocampus_knowledge', 'STRING', 'Milvus向量集合名称'),
+('milvus.dimension', '1536', 'NUMBER', '向量维度(根据Qwen3-Embedding模型)'),
+('milvus.metric_type', 'COSINE', 'STRING', '相似度度量类型(L2, IP, COSINE)'),
+('milvus.index_type', 'IVF_FLAT', 'STRING', '索引类型(IVF_FLAT, HNSW等)'),
+('milvus.nprobe', '10', 'NUMBER', '搜索的簇数量'),
+('embedding.model', 'text-embedding-v3', 'STRING', 'Embedding模型(阿里云百炼平台text-embedding-v3)'),
+('embedding.api_url', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'STRING', 'Embedding API地址'),
+('embedding.batch_size', '10', 'NUMBER', 'Embedding批量处理大小'),
+('embedding.max_retries', '3', 'NUMBER', 'Embedding API最大重试次数'),
+('llm.model', 'deepseek-v3.2', 'STRING', 'LLM模型(DeepSeek V3.2)'),
+('llm.api_url', 'https://api.deepseek.com/v1/chat/completions', 'STRING', 'LLM API地址'),
+('llm.max_tokens', '1000', 'NUMBER', 'LLM生成最大token数'),
+('llm.timeout', '30', 'NUMBER', 'LLM API超时时间(秒)'),
+('file.upload.max_size', '10485760', 'NUMBER', '文件上传最大大小(字节,10MB)'),
+('file.allowed_types', 'pdf,txt,md,docx,doc,ppt,pptx', 'STRING', '允许上传的文件类型'),
+('chunking.strategy', 'recursive', 'STRING', '文本切块策略(recursive/paragraph/line/character)'),
+('chunking.max_size', '500', 'NUMBER', '文本切块最大字符数'),
+('chunking.overlap_size', '50', 'NUMBER', '文本切块重叠字符数'),
+('chunking.min_chunk_size', '1', 'NUMBER', '文本切块最小字符数'),
+('chunking.separators', '\n\n,\n,。,！,？,.,!,?, ,', 'STRING', '递归分割的分隔符(逗号分隔)'),
+('system.name', 'EchoCampus-Bot', 'STRING', '系统名称'),
+('system.description', '基于RAG技术的智能校园问答系统', 'STRING', '系统描述');
+```
+
+#### 2.1.7 邮箱验证码表 (email_verification_codes)
+```sql
+CREATE TABLE IF NOT EXISTS email_verification_codes (
+    id BIGSERIAL PRIMARY KEY,
+    email VARCHAR(100) NOT NULL,
+    code VARCHAR(10) NOT NULL,
+    type VARCHAR(20) NOT NULL,  -- REGISTER, RESET_PASSWORD, etc.
+    expired_at TIMESTAMP NOT NULL,
+    used BOOLEAN DEFAULT FALSE,
+    used_at TIMESTAMP,
+    ip_address VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 创建索引
+CREATE INDEX idx_email_verification_codes_email ON email_verification_codes(email);
+CREATE INDEX idx_email_verification_codes_type ON email_verification_codes(type);
+CREATE INDEX idx_email_verification_codes_expired_at ON email_verification_codes(expired_at);
+CREATE INDEX idx_email_verification_codes_used ON email_verification_codes(used);
+CREATE INDEX idx_email_verification_codes_email_type_used ON email_verification_codes(email, type, used);
+CREATE INDEX idx_email_verification_codes_query ON email_verification_codes(email, type, used, expired_at DESC);
+```
+
+#### 2.1.8 检索日志表 (search_logs)
+```sql
+CREATE TABLE search_logs (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES users(id),
+    conversation_id BIGINT REFERENCES conversations(id),
+    query TEXT NOT NULL,  -- 用户查询
+    query_vector_id VARCHAR(100),  -- 查询向量ID
+    retrieved_chunks JSONB,  -- 检索到的片段信息
+    response_time_ms INTEGER,  -- 响应时间(毫秒)
+    answer_tokens INTEGER,  -- 答案token数
+    status VARCHAR(20) DEFAULT 'SUCCESS',  -- SUCCESS, FAILED
+    error_message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 创建索引
+CREATE INDEX idx_search_logs_user_id ON search_logs(user_id);
+CREATE INDEX idx_search_logs_conversation_id ON search_logs(conversation_id);
+CREATE INDEX idx_search_logs_created_at ON search_logs(created_at);
+```
+
+#### 2.1.9 操作日志表 (operation_logs)
+```sql
+CREATE TABLE operation_logs (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES users(id),
+    operation_type VARCHAR(50) NOT NULL,  -- LOGIN, UPLOAD, DELETE, UPDATE
+    operation_desc TEXT,
+    resource_type VARCHAR(50),  -- USER, DOC, CHUNK, CONFIG
+    resource_id BIGINT,
+    ip_address INET,
+    user_agent TEXT,
+    request_params JSONB,
+    response_result JSONB,
+    status VARCHAR(20) DEFAULT 'SUCCESS',  -- SUCCESS, FAILED
+    error_message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 创建索引
+CREATE INDEX idx_operation_logs_user_id ON operation_logs(user_id);
+CREATE INDEX idx_operation_logs_operation_type ON operation_logs(operation_type);
+CREATE INDEX idx_operation_logs_created_at ON operation_logs(created_at);
+```
+
+#### 2.1.10 知识库分类表 (knowledge_categories)
+```sql
+CREATE TABLE knowledge_categories (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    parent_id BIGINT REFERENCES knowledge_categories(id),
+    sort_order INTEGER DEFAULT 0,
+    doc_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 创建索引
+CREATE INDEX idx_knowledge_categories_parent_id ON knowledge_categories(parent_id);
+CREATE INDEX idx_knowledge_categories_sort_order ON knowledge_categories(sort_order);
+```
+
+#### 2.1.11 系统统计表 (system_statistics)
+```sql
+CREATE TABLE system_statistics (
+    id BIGSERIAL PRIMARY KEY,
+    stat_date DATE NOT NULL,
+    stat_type VARCHAR(50) NOT NULL,  -- DAILY, WEEKLY, MONTHLY
+    user_count INTEGER DEFAULT 0,
+    conversation_count INTEGER DEFAULT 0,
+    message_count INTEGER DEFAULT 0,
+    doc_count INTEGER DEFAULT 0,
+    query_count INTEGER DEFAULT 0,
+    avg_response_time_ms INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(stat_date, stat_type)
+);
+
+-- 创建索引
+CREATE INDEX idx_system_statistics_stat_date ON system_statistics(stat_date);
+CREATE INDEX idx_system_statistics_stat_type ON system_statistics(stat_type);
 ```
 
 ### 2.2 Milvus 向量数据库设计
