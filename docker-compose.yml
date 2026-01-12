@@ -12,8 +12,7 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./docs/数据库设计.sql:/docker-entrypoint-initdb.d/01-init.sql
-      - ./docs/email_verification_codes.sql:/docker-entrypoint-initdb.d/02-email-verification-codes.sql
+      - ./docs/数据库设计.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
