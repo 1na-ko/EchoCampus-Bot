@@ -30,7 +30,7 @@ public class MilvusConfig {
     /**
      * 向量维度
      */
-    private Integer dimension = 1536;
+    private Integer dimension = 1024;
 
     /**
      * 相似度度量类型: L2, IP, COSINE

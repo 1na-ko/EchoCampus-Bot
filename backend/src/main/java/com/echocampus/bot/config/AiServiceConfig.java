@@ -42,7 +42,7 @@ public class AiServiceConfig {
         /**
          * 向量维度
          */
-        private Integer dimension = 1536;
+        private Integer dimension = 1024;
 
         /**
          * 批量处理大小

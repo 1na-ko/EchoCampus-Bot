@@ -4,7 +4,7 @@ import type { ApiResponse } from '@/types'
 
 // 创建 axios 实例
 const service: AxiosInstance = axios.create({
-  baseURL: 'http://150.158.97.39:8083/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://150.158.97.39:8083/api',
   timeout: 600000,
   headers: {
     'Content-Type': 'application/json',
@@ -140,7 +140,7 @@ export function createSSERequest(
   const token = localStorage.getItem('token')
   const userId = localStorage.getItem('userId')
   
-  fetch(`http://150.158.97.39:8083/api${url}`, {
+  fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://150.158.97.39:8083/api'}${url}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

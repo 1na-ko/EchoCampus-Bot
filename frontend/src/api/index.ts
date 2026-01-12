@@ -213,7 +213,8 @@ export const knowledgeApi = {
   ): EventSource {
     const token = localStorage.getItem('token')
     const userId = localStorage.getItem('userId')
-    const url = new URL(`http://150.158.97.39:8083/api/v1/knowledge/docs/${docId}/progress`, window.location.origin)
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://150.158.97.39:8083/api'
+    const url = new URL(`${apiBaseUrl}/v1/knowledge/docs/${docId}/progress`, window.location.origin)
     
     if (token) {
       url.searchParams.append('token', token)
