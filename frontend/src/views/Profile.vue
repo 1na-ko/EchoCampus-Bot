@@ -153,14 +153,16 @@
                     <div style="display: flex; gap: 8px;">
                       <a-input
                          v-model:value="passwordForm.verificationCode"
-                         placeholder="请输入6位验证码"
+                         placeholder="6位验证码"
                          class="glass-input"
                          :bordered="false"
                          style="flex: 1;"
                          :maxlength="6"
+                         size="large"
                       />
                       <a-button
                         class="glass-input"
+                        size="large"
                         :disabled="countdown > 0"
                         :loading="sendingCode"
                         @click="handleSendCode"
