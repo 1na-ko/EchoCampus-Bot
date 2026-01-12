@@ -223,7 +223,7 @@ export const knowledgeApi = {
       url.searchParams.append('userId', userId)
     }
     
-    const eventSource = new EventSource(url.toString())
+    const eventSource = new EventSource(url.toString(), { withCredentials: true })
     
     eventSource.addEventListener('progress', (event: MessageEvent) => {
       try {
