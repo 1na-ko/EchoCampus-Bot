@@ -1,6 +1,6 @@
 package com.echocampus.bot.service.impl;
 
-import com.echocampus.bot.config.AiConfig;
+import com.echocampus.bot.config.AiServiceConfig;
 import com.echocampus.bot.entity.Message;
 import com.echocampus.bot.service.EnhancedLlmService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -27,7 +27,7 @@ import java.util.function.Consumer;
 @RequiredArgsConstructor
 public class EnhancedLlmServiceImpl implements EnhancedLlmService {
 
-    private final AiConfig aiConfig;
+    private final AiServiceConfig aiConfig;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private volatile OkHttpClient httpClient;
@@ -57,7 +57,7 @@ public class EnhancedLlmServiceImpl implements EnhancedLlmService {
                                List<ToolSpecification> tools, 
                                ToolExecutor toolExecutor) {
         
-        AiConfig.LlmConfig config = aiConfig.getLlm();
+        AiServiceConfig.LlmConfig config = aiConfig.getLlm();
         int maxIterations = 5; // 最大工具调用迭代次数
         
         try {
@@ -162,7 +162,7 @@ public class EnhancedLlmServiceImpl implements EnhancedLlmService {
                                      ToolExecutor toolExecutor,
                                      Consumer<String> contentConsumer) {
         
-        AiConfig.LlmConfig config = aiConfig.getLlm();
+        AiServiceConfig.LlmConfig config = aiConfig.getLlm();
         int maxIterations = 5;
         StringBuilder fullResponse = new StringBuilder();
         
@@ -379,7 +379,7 @@ public class EnhancedLlmServiceImpl implements EnhancedLlmService {
     /**
      * 构建请求体
      */
-    private Map<String, Object> buildRequestBody(AiConfig.LlmConfig config,
+    private Map<String, Object> buildRequestBody(AiServiceConfig.LlmConfig config,
                                                  List<Map<String, Object>> messages,
                                                  List<ToolSpecification> tools,
                                                  boolean stream) {

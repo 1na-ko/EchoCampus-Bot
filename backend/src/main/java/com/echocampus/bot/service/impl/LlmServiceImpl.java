@@ -1,6 +1,6 @@
 package com.echocampus.bot.service.impl;
 
-import com.echocampus.bot.config.AiConfig;
+import com.echocampus.bot.config.AiServiceConfig;
 import com.echocampus.bot.entity.Message;
 import com.echocampus.bot.service.LlmService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -26,7 +26,7 @@ import java.util.function.Consumer;
 @RequiredArgsConstructor
 public class LlmServiceImpl implements LlmService {
 
-    private final AiConfig aiConfig;
+    private final AiServiceConfig aiConfig;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private volatile OkHttpClient httpClient;
@@ -145,7 +145,7 @@ public class LlmServiceImpl implements LlmService {
 
     @Override
     public String chat(List<ChatMessage> messages) {
-        AiConfig.LlmConfig config = aiConfig.getLlm();
+        AiServiceConfig.LlmConfig config = aiConfig.getLlm();
         
         try {
             // 构建请求体
@@ -255,7 +255,7 @@ public class LlmServiceImpl implements LlmService {
 
     @Override
     public boolean isAvailable() {
-        AiConfig.LlmConfig config = aiConfig.getLlm();
+        AiServiceConfig.LlmConfig config = aiConfig.getLlm();
         
         if (config.getApiKey() == null || config.getApiKey().isEmpty() 
                 || config.getApiKey().startsWith("your_")) {
@@ -310,7 +310,7 @@ public class LlmServiceImpl implements LlmService {
      * 流式聊天调用
      */
     private void chatStream(List<ChatMessage> messages, Consumer<String> chunkConsumer) {
-        AiConfig.LlmConfig config = aiConfig.getLlm();
+        AiServiceConfig.LlmConfig config = aiConfig.getLlm();
         
         try {
             // 构建请求体

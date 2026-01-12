@@ -1,6 +1,6 @@
 package com.echocampus.bot.service.impl;
 
-import com.echocampus.bot.config.AiConfig;
+import com.echocampus.bot.config.AiServiceConfig;
 import com.echocampus.bot.service.EmbeddingService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class EmbeddingServiceImpl implements EmbeddingService {
 
-    private final AiConfig aiConfig;
+    private final AiServiceConfig aiConfig;
     private final ObjectMapper objectMapper = new ObjectMapper();
     
     private final OkHttpClient httpClient = new OkHttpClient.Builder()
@@ -50,7 +50,7 @@ public class EmbeddingServiceImpl implements EmbeddingService {
             return allEmbeddings;
         }
 
-        AiConfig.EmbeddingConfig config = aiConfig.getEmbedding();
+        AiServiceConfig.EmbeddingConfig config = aiConfig.getEmbedding();
         int batchSize = config.getBatchSize();
         
         // 分批处理
@@ -78,7 +78,7 @@ public class EmbeddingServiceImpl implements EmbeddingService {
      * 执行Embedding API请求
      */
     private List<float[]> doEmbedRequest(List<String> texts) {
-        AiConfig.EmbeddingConfig config = aiConfig.getEmbedding();
+        AiServiceConfig.EmbeddingConfig config = aiConfig.getEmbedding();
         List<float[]> embeddings = new ArrayList<>();
         
         int retries = 0;
@@ -158,7 +158,7 @@ public class EmbeddingServiceImpl implements EmbeddingService {
 
     @Override
     public boolean isAvailable() {
-        AiConfig.EmbeddingConfig config = aiConfig.getEmbedding();
+        AiServiceConfig.EmbeddingConfig config = aiConfig.getEmbedding();
         
         if (config.getApiKey() == null || config.getApiKey().isEmpty() 
                 || config.getApiKey().startsWith("your_")) {
