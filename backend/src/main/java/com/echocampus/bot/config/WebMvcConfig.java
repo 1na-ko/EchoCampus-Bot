@@ -16,9 +16,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        log.info("WebMvcConfig: 注册JWT认证拦截器");
-        registry.addInterceptor(jwtAuthInterceptor)
-                .addPathPatterns("/**");
-        log.info("WebMvcConfig: JWT认证拦截器已注册，拦截路径: /**");
+        log.info("WebMvcConfig: JWT认证已由Spring Security处理，禁用JwtAuthInterceptor");
     }
 }
