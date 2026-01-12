@@ -49,191 +49,130 @@ public class EmailServiceImpl implements EmailService {
         return "<!DOCTYPE html>\n" +
                 "<html>\n" +
                 "<head>\n" +
-                "<meta charset='UTF-8'>\n" +
-                "<meta name='viewport' content='width=device-width, initial-scale=1.0'>\n" +
-                "<title>EchoCampus Check</title>\n" +
+                "<meta charset=\"UTF-8\">\n" +
+                "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n" +
+                "<title>EchoCampus - 邮箱验证码</title>\n" +
                 "<style>\n" +
-                "  :root {\n" +
-                "    --primary-color: #6366f1;\n" +
-                "    --primary-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);\n" +
-                "    --surface-color: rgba(255, 255, 255, 0.9);\n" +
-                "    --text-primary: #1e293b;\n" +
-                "    --text-secondary: #64748b;\n" +
-                "    --border-color: rgba(226, 232, 240, 0.8);\n" +
-                "  }\n" +
                 "  body {\n" +
                 "    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;\n" +
                 "    background-color: #f8fafc;\n" +
-                "    background-image: \n" +
-                "      radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.1) 0px, transparent 50%),\n" +
-                "      radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.1) 0px, transparent 50%);\n" +
                 "    margin: 0;\n" +
                 "    padding: 0;\n" +
-                "    -webkit-font-smoothing: antialiased;\n" +
+                "    -webkit-text-size-adjust: 100%;\n" +
+                "    -ms-text-size-adjust: 100%;\n" +
                 "  }\n" +
                 "  .wrapper {\n" +
                 "    width: 100%;\n" +
-                "    padding: 40px 20px;\n" +
-                "    box-sizing: border-box;\n" +
-                "    display: flex;\n" +
-                "    justify-content: center;\n" +
+                "    table-layout: fixed;\n" +
+                "    background-color: #f8fafc;\n" +
+                "    padding: 40px 0;\n" +
                 "  }\n" +
                 "  .container {\n" +
                 "    width: 100%;\n" +
                 "    max-width: 520px;\n" +
-                "    background: var(--surface-color);\n" +
-                "    border-radius: 24px;\n" +
-                "    box-shadow: \n" +
-                "      0 4px 6px -1px rgba(0, 0, 0, 0.05), \n" +
-                "      0 10px 15px -3px rgba(0, 0, 0, 0.05),\n" +
-                "      0 0 0 1px rgba(255, 255, 255, 0.5) inset;\n" +
-                "    backdrop-filter: blur(20px);\n" +
+                "    background-color: #ffffff;\n" +
+                "    margin: 0 auto;\n" +
+                "    border-radius: 16px;\n" +
+                "    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.05);\n" +
                 "    overflow: hidden;\n" +
+                "    border: 1px solid #e2e8f0;\n" +
                 "  }\n" +
                 "  .header {\n" +
-                "    background: var(--primary-gradient);\n" +
-                "    padding: 40px 32px;\n" +
+                "    background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);\n" +
+                "    padding: 48px 40px;\n" +
                 "    text-align: center;\n" +
-                "    position: relative;\n" +
                 "  }\n" +
                 "  .logo {\n" +
-                "    color: white;\n" +
+                "    color: #ffffff;\n" +
                 "    font-size: 28px;\n" +
                 "    font-weight: 800;\n" +
                 "    letter-spacing: -0.5px;\n" +
-                "    margin-bottom: 8px;\n" +
+                "    margin: 0;\n" +
                 "    text-shadow: 0 2px 4px rgba(0,0,0,0.1);\n" +
                 "  }\n" +
                 "  .subtitle {\n" +
                 "    color: rgba(255, 255, 255, 0.9);\n" +
-                "    font-size: 15px;\n" +
+                "    font-size: 14px;\n" +
+                "    margin-top: 8px;\n" +
                 "    font-weight: 500;\n" +
+                "    letter-spacing: 0.5px;\n" +
                 "  }\n" +
                 "  .content {\n" +
-                "    padding: 40px 32px;\n" +
+                "    padding: 40px;\n" +
+                "    background-color: #ffffff;\n" +
                 "  }\n" +
-                "  .greeting {\n" +
-                "    font-size: 18px;\n" +
-                "    color: var(--text-primary);\n" +
-                "    font-weight: 600;\n" +
-                "    margin-bottom: 16px;\n" +
-                "  }\n" +
-                "  .message {\n" +
-                "    font-size: 15px;\n" +
-                "    color: var(--text-secondary);\n" +
-                "    line-height: 1.7;\n" +
-                "    margin-bottom: 32px;\n" +
-                "  }\n" +
-                "  .code-box {\n" +
-                "    background: rgba(99, 102, 241, 0.04);\n" +
-                "    border: 1px solid rgba(99, 102, 241, 0.1);\n" +
-                "    border-radius: 16px;\n" +
-                "    padding: 32px;\n" +
+                "  .code-container {\n" +
+                "    background-color: #f8fafc;\n" +
+                "    border: 1px solid #e2e8f0;\n" +
+                "    border-radius: 12px;\n" +
+                "    padding: 24px;\n" +
                 "    text-align: center;\n" +
-                "    margin-bottom: 32px;\n" +
-                "  }\n" +
-                "  .code-label {\n" +
-                "    font-size: 12px;\n" +
-                "    text-transform: uppercase;\n" +
-                "    letter-spacing: 1.5px;\n" +
-                "    color: var(--text-secondary);\n" +
-                "    margin-bottom: 12px;\n" +
-                "    font-weight: 600;\n" +
+                "    margin: 24px 0;\n" +
                 "  }\n" +
                 "  .code {\n" +
-                "    font-family: 'Fira Code', 'Menlo', 'Monaco', 'Courier New', monospace;\n" +
-                "    font-size: 36px;\n" +
+                "    font-family: 'Courier New', Courier, monospace;\n" +
+                "    font-size: 32px;\n" +
                 "    font-weight: 700;\n" +
-                "    color: var(--primary-color);\n" +
-                "    letter-spacing: 6px;\n" +
-                "    margin-bottom: 16px;\n" +
-                "  }\n" +
-                "  .expiration {\n" +
-                "    font-size: 13px;\n" +
-                "    color: var(--text-secondary);\n" +
-                "    display: flex;\n" +
-                "    align-items: center;\n" +
-                "    justify-content: center;\n" +
-                "    gap: 6px;\n" +
-                "  }\n" +
-                "  .tips {\n" +
-                "    background: #fff;\n" +
-                "    border-radius: 12px;\n" +
-                "    padding: 20px;\n" +
-                "    border: 1px solid var(--border-color);\n" +
-                "  }\n" +
-                "  .tips-title {\n" +
-                "    font-size: 14px;\n" +
-                "    font-weight: 600;\n" +
-                "    color: var(--text-primary);\n" +
-                "    margin-bottom: 8px;\n" +
-                "    display: flex;\n" +
-                "    align-items: center;\n" +
-                "    gap: 8px;\n" +
-                "  }\n" +
-                "  .tips-content {\n" +
-                "    font-size: 13px;\n" +
-                "    color: var(--text-secondary);\n" +
-                "    line-height: 1.6;\n" +
+                "    color: #4f46e5;\n" +
+                "    letter-spacing: 4px;\n" +
                 "    margin: 0;\n" +
                 "  }\n" +
+                "  .text-secondary {\n" +
+                "    color: #64748b;\n" +
+                "    font-size: 14px;\n" +
+                "    line-height: 1.6;\n" +
+                "  }\n" +
                 "  .footer {\n" +
+                "    background-color: #f8fafc;\n" +
+                "    padding: 24px 40px;\n" +
                 "    text-align: center;\n" +
-                "    padding: 24px;\n" +
-                "    border-top: 1px solid var(--border-color);\n" +
-                "    background: rgba(248, 250, 252, 0.5);\n" +
+                "    border-top: 1px solid #e2e8f0;\n" +
                 "  }\n" +
-                "  .copyright {\n" +
-                "    font-size: 12px;\n" +
+                "  .footer-text {\n" +
                 "    color: #94a3b8;\n" +
-                "  }\n" +
-                "  @media (max-width: 600px) {\n" +
-                "    .wrapper { padding: 20px 16px; }\n" +
-                "    .header { padding: 32px 24px; }\n" +
-                "    .content { padding: 32px 24px; }\n" +
-                "    .code { font-size: 32px; }\n" +
+                "    font-size: 12px;\n" +
                 "  }\n" +
                 "</style>\n" +
                 "</head>\n" +
                 "<body>\n" +
-                "  <div class='wrapper'>\n" +
-                "    <div class='container'>\n" +
-                "      <div class='header'>\n" +
-                "        <div class='logo'>EchoCampus</div>\n" +
-                "        <div class='subtitle'>智能校园问答助手</div>\n" +
-                "      </div>\n" +
-                "      \n" +
-                "      <div class='content'>\n" +
-                "        <div class='greeting'>您好！</div>\n" +
-                "        <div class='message'>\n" +
-                "          您正在进行身份验证，请使用下方的验证码完成操作。验证码仅用于本次验证，请勿泄露给他人。\n" +
-                "        </div>\n" +
-                "        \n" +
-                "        <div class='code-box'>\n" +
-                "          <div class='code-label'>VERIFICATION CODE</div>\n" +
-                "          <div class='code'>" + code + "</div>\n" +
-                "          <div class='expiration'>\n" +
-                "            此验证码在 5 分钟内有效\n" +
-                "          </div>\n" +
-                "        </div>\n" +
-                "        \n" +
-                "        <div class='tips'>\n" +
-                "          <div class='tips-title'>\n" +
-                "            <span>🛡️</span>\n" +
-                "            安全提示\n" +
-                "          </div>\n" +
-                "          <p class='tips-content'>\n" +
-                "            如果这不是您的操作，请忽略此邮件。由于您的邮箱可能已被泄露，建议您尽快修改邮箱密码以确保账号安全。\n" +
-                "          </p>\n" +
-                "        </div>\n" +
-                "      </div>\n" +
-                "      \n" +
-                "      <div class='footer'>\n" +
-                "        <div class='copyright'>&copy; 2026 EchoTech Studio from Shanghai Institute of Technology.</div>\n" +
-                "        <div class='copyright'>All rights reserved.</div>\n" +
-                "      </div>\n" +
-                "    </div>\n" +
-                "  </div>\n" +
+                "  <table class=\"wrapper\" role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\">\n" +
+                "    <tr>\n" +
+                "      <td align=\"center\">\n" +
+                "        <table class=\"container\" role=\"presentation\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\">\n" +
+                "          <!-- Header -->\n" +
+                "          <tr>\n" +
+                "            <td class=\"header\">\n" +
+                "              <h1 class=\"logo\">EchoCampus</h1>\n" +
+                "              <div class=\"subtitle\">智能校园问答助手</div>\n" +
+                "            </td>\n" +
+                "          </tr>\n" +
+                "          <!-- Content -->\n" +
+                "          <tr>\n" +
+                "            <td class=\"content\">\n" +
+                "              <h2 style=\"color: #1e293b; font-size: 20px; font-weight: 600; margin: 0 0 16px 0;\">验证您的身份</h2>\n" +
+                "              <p class=\"text-secondary\" style=\"margin: 0 0 24px 0;\">您好！您正在进行邮箱验证，请使用下方的验证码完成操作。验证码有效期为 5 分钟。</p>\n" +
+                "              \n" +
+                "              <div class=\"code-container\">\n" +
+                "                <div style=\"font-size: 11px; text-transform: uppercase; color: #64748b; letter-spacing: 1px; margin-bottom: 8px; font-weight: 600;\">Verification Code</div>\n" +
+                "                <div class=\"code\">" + code + "</div>\n" +
+                "              </div>\n" +
+                "              \n" +
+                "              <p class=\"text-secondary\" style=\"font-size: 13px; margin: 0; background-color: #fef2f2; color: #c026d3; padding: 12px; border-radius: 8px; border: 1px solid #fecaca;\">\n" +
+                "                <span style=\"margin-right: 4px;\">⚠️</span>若非本人操作，请忽略此邮件。您的账号可能存在风险，建议及时修改密码。\n" +
+                "              </p>\n" +
+                "            </td>\n" +
+                "          </tr>\n" +
+                "          <!-- Footer -->\n" +
+                "          <tr>\n" +
+                "            <td class=\"footer\">\n" +
+                "              <p class=\"footer-text\" style=\"margin: 0 0 8px 0;\">&copy; 2026 EchoTech Studio from Shanghai Institute of Technology.</p>\n" +
+                "              <p class=\"footer-text\" style=\"margin: 0;\">All rights reserved.</p>\n" +
+                "            </td>\n" +
+                "          </tr>\n" +
+                "        </table>\n" +
+                "      </td>\n" +
+                "    </tr>\n" +
+                "  </table>\n" +
                 "</body>\n" +
                 "</html>";
     }
