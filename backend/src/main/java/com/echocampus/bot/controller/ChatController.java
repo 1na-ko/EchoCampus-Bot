@@ -1,6 +1,5 @@
 package com.echocampus.bot.controller;
 
-import com.echocampus.bot.annotation.RequireAuth;
 import com.echocampus.bot.common.Result;
 import com.echocampus.bot.common.ResultCode;
 import com.echocampus.bot.common.exception.BusinessException;
@@ -44,7 +43,6 @@ public class ChatController {
 
     @Operation(summary = "发送消息", description = "发送消息并获取AI回复")
     @PostMapping("/message")
-    @RequireAuth
     public Result<ChatResponse> sendMessage(HttpServletRequest request, @Valid @RequestBody ChatRequest chatRequest) {
         Long userId = (Long) request.getAttribute("userId");
         ChatResponse response = chatService.sendMessage(userId, chatRequest);
@@ -53,7 +51,6 @@ public class ChatController {
 
     @Operation(summary = "发送消息（流式）", description = "发送消息并获取流式AI回复")
     @PostMapping(value = "/message/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    @RequireAuth
     public SseEmitter sendMessageStream(HttpServletRequest request, @Valid @RequestBody ChatRequest chatRequest) {
         Long userId = (Long) request.getAttribute("userId");
         
@@ -114,7 +111,6 @@ public class ChatController {
 
     @Operation(summary = "获取会话列表", description = "获取用户的会话列表")
     @GetMapping("/conversations")
-    @RequireAuth
     public Result<List<Conversation>> getConversations(HttpServletRequest request,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer size) {
@@ -125,7 +121,6 @@ public class ChatController {
 
     @Operation(summary = "获取会话消息", description = "获取指定会话的消息历史")
     @GetMapping("/conversations/{conversationId}/messages")
-    @RequireAuth
     public Result<List<Message>> getMessages(HttpServletRequest request, @Parameter(description = "会话ID") @PathVariable Long conversationId) {
         Long userId = (Long) request.getAttribute("userId");
         List<Message> messages = chatService.getMessages(conversationId);
@@ -134,7 +129,6 @@ public class ChatController {
 
     @Operation(summary = "创建新会话", description = "创建一个新的对话会话")
     @PostMapping("/conversations")
-    @RequireAuth
     public Result<Conversation> createConversation(HttpServletRequest request,
             @Parameter(description = "会话标题") @RequestParam(defaultValue = "新对话") String title) {
         Long userId = (Long) request.getAttribute("userId");
@@ -144,7 +138,6 @@ public class ChatController {
 
     @Operation(summary = "删除会话", description = "删除指定的对话会话")
     @DeleteMapping("/conversations/{conversationId}")
-    @RequireAuth
     public Result<Void> deleteConversation(HttpServletRequest request, @Parameter(description = "会话ID") @PathVariable Long conversationId) {
         Long userId = (Long) request.getAttribute("userId");
         chatService.deleteConversation(conversationId);
@@ -153,7 +146,6 @@ public class ChatController {
 
     @Operation(summary = "更新会话标题", description = "更新对话会话的标题")
     @PutMapping("/conversations/{conversationId}")
-    @RequireAuth
     public Result<Void> updateConversationTitle(HttpServletRequest request,
             @Parameter(description = "会话ID") @PathVariable Long conversationId,
             @Parameter(description = "新标题") @RequestParam String title) {
