@@ -44,6 +44,18 @@
                 登录
               </a-button>
             </a-form-item>
+
+            <a-form-item>
+              <a-button
+                type="default"
+                size="large"
+                block
+                @click="handleDemoLogin"
+                :loading="loading"
+              >
+                一键体验演示账号
+              </a-button>
+            </a-form-item>
           </a-form>
         </a-tab-pane>
 
@@ -215,6 +227,22 @@ const handleLogin = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const handleDemoLogin = async () => {
+  loginForm.username = 'EchoCampus'
+  loginForm.password = 'Echo@2026'
+  loading.value = true
+  setTimeout(async () => {
+    try {
+      const success = await userStore.login(loginForm)
+      if (success) {
+        router.push('/chat')
+      }
+    } finally {
+      loading.value = false
+    }
+  }, 1000)
 }
 
 const handleSendCode = async () => {
