@@ -146,18 +146,16 @@ describe('User Store', () => {
 
       ;(authApi.register as Mock).mockResolvedValueOnce({ data: {} })
 
-      const result = await store.register({
+      const registerData = {
         username: 'newuser',
         password: 'password123',
         email: 'new@example.com',
-      })
+      } as any
+
+      const result = await store.register(registerData)
 
       expect(result).toBe(true)
-      expect(authApi.register).toHaveBeenCalledWith({
-        username: 'newuser',
-        password: 'password123',
-        email: 'new@example.com',
-      })
+      expect(authApi.register).toHaveBeenCalledWith(registerData)
     })
 
     it('注册失败应该返回false', async () => {
@@ -168,7 +166,7 @@ describe('User Store', () => {
       const result = await store.register({
         username: 'existinguser',
         password: 'password123',
-      })
+      } as any)
 
       expect(result).toBe(false)
     })
