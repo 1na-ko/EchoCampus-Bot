@@ -237,6 +237,7 @@ import { Modal, Empty } from 'ant-design-vue'
 import { useChatStore } from '@/stores/chat'
 import type { Message } from '@/types'
 import { marked, MarkedOptions } from 'marked'
+import DOMPurify from 'dompurify'
 import { markedHighlight } from 'marked-highlight'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
@@ -330,7 +331,8 @@ marked.setOptions({
 } as MarkedOptions)
 
 const renderMarkdown = (content: string) => {
-  return marked(content)
+  const html = marked(content)
+  return DOMPurify.sanitize(html)
 }
 
 const formatTime = (time: string) => {

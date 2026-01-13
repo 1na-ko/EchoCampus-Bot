@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -34,6 +35,7 @@ public class SystemController {
      * 注意：生产环境建议添加权限控制
      */
     @Operation(summary = "手动触发数据清理", description = "立即执行一次数据清理任务")
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/cleanup")
     public Result<Map<String, Object>> triggerCleanup() {
         log.info("手动触发数据清理任务");
