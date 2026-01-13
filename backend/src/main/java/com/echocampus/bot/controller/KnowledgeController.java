@@ -8,7 +8,6 @@ import com.echocampus.bot.entity.KnowledgeCategory;
 import com.echocampus.bot.entity.KnowledgeDoc;
 import com.echocampus.bot.service.DocumentProgressService;
 import com.echocampus.bot.service.KnowledgeService;
-import com.echocampus.bot.service.impl.DocumentProgressServiceImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,7 +31,7 @@ import java.util.List;
 public class KnowledgeController {
 
     private final KnowledgeService knowledgeService;
-    private final DocumentProgressServiceImpl documentProgressService;
+    private final DocumentProgressService documentProgressService;
 
     @Operation(summary = "上传文档", description = "上传知识库文档")
     @PostMapping("/docs")
@@ -113,38 +112,8 @@ public class KnowledgeController {
     @Operation(summary = "获取当前进度", description = "获取文档处理的当前进度状态")
     @GetMapping("/docs/{docId}/progress/current")
     public Result<DocumentProgressDTO> getCurrentProgress(HttpServletRequest request, @Parameter(description = "文档ID") @PathVariable Long docId) {
-        DocumentProgressDTO progress = documentProgressService.getProgress(docId);
-        if (progress == null) {
-            // 如果没有缓存的进度，查询文档状态
-            KnowledgeDoc doc = knowledgeService.getDocumentById(docId);
-            if ("COMPLETED".equals(doc.getProcessStatus())) {
-                progress = DocumentProgressDTO.completed(docId, doc.getVectorCount() != null ? doc.getVectorCount() : 0);
-            } else if ("FAILED".equals(doc.getProcessStatus())) {
-                progress = DocumentProgressDTO.failed(docId, "UNKNOWN", doc.getProcessMessage());
-            } else if ("PROCESSING".equals(doc.getProcessStatus())) {
-                progress = DocumentProgressDTO.builder()
-                        .docId(docId)
-                        .stage("PROCESSING")
-                        .stageName("处理中")
-                        .progress(0)
-                        .totalProgress(0)
-                        .message("正在处理中...")
-                        .completed(false)
-                        .failed(false)
-                        .build();
-            } else {
-                progress = DocumentProgressDTO.builder()
-                        .docId(docId)
-                        .stage("PENDING")
-                        .stageName("等待处理")
-                        .progress(0)
-                        .totalProgress(0)
-                        .message("等待处理...")
-                        .completed(false)
-                        .failed(false)
-                        .build();
-            }
-        }
+        // 使用Service层方法获取或构建进度信息
+        DocumentProgressDTO progress = documentProgressService.getOrBuildProgress(docId);
         return Result.success(progress);
     }
 }
