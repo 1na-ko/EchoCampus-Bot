@@ -32,6 +32,8 @@ public class MarkdownDocumentParser implements DocumentParser {
 
     @Override
     public String parse(String filePath) throws DocumentParseException {
+        validateFilePath(filePath);
+        
         try {
             String content = Files.readString(Paths.get(filePath), StandardCharsets.UTF_8);
             
@@ -54,6 +56,8 @@ public class MarkdownDocumentParser implements DocumentParser {
 
     @Override
     public DocumentMetadata getMetadata(String filePath) throws DocumentParseException {
+        validateFilePath(filePath);
+        
         try {
             String content = Files.readString(Paths.get(filePath), StandardCharsets.UTF_8);
             

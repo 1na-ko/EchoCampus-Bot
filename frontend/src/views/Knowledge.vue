@@ -384,9 +384,32 @@ const editForm = reactive<KnowledgeDocRequest>({
 })
 
 const beforeUpload = (file: File) => {
+  // 检查文件大小（50MB限制）
   const isLt50M = file.size / 1024 / 1024 < 50
   if (!isLt50M) {
     message.error('文件大小不能超过 50MB!')
+    return false
+  }
+  
+  // 检查文件是否为空
+  if (file.size === 0) {
+    message.error('文件不能为空!')
+    return false
+  }
+  
+  // 检查文件名是否有效
+  if (!file.name || file.name.trim() === '') {
+    message.error('文件名不能为空!')
+    return false
+  }
+  
+  // 检查文件扩展名
+  const fileName = file.name.toLowerCase()
+  const allowedExtensions = ['.pdf', '.txt', '.md', '.markdown', '.docx', '.doc', '.pptx', '.ppt', '.xlsx', '.xls']
+  const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext))
+  
+  if (!hasValidExtension) {
+    message.error('不支持的文件格式，请选择 PDF、Markdown、Word、PPT 或 Excel 文件')
     return false
   }
   
@@ -440,9 +463,12 @@ const handleUpload = async () => {
       if (uploadProgressRef.value) {
         uploadProgressRef.value.subscribeProgress(doc.id)
       }
+    } else {
+      // 上传失败，错误信息已经在拦截器中显示
+      progressFailed.value = true
     }
   } catch (error) {
-    message.error('上传失败')
+    // 错误信息已经在request.ts的拦截器中处理并显示
     progressFailed.value = true
   } finally {
     uploading.value = false

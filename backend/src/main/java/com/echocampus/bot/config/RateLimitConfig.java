@@ -4,13 +4,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Configuration
+@EnableScheduling
 public class RateLimitConfig {
 
     private static final int MAX_CONCURRENT_REQUESTS = 100;
@@ -28,6 +32,9 @@ public class RateLimitConfig {
     @Value("${verification-code.max-register-per-hour:3}")
     private int maxRegisterPerHour;
 
+    @Value("${rate-limit.cleanup-interval-hours:1}")
+    private int cleanupIntervalHours;
+
     private final ConcurrentMap<Long, AtomicInteger> userRequestCounters = new ConcurrentHashMap<>();
     private final AtomicInteger totalConcurrentRequests = new AtomicInteger(0);
     private final AtomicInteger totalSseConnections = new AtomicInteger(0);
@@ -40,6 +47,29 @@ public class RateLimitConfig {
     @Bean
     public TimeWindowRateLimiter timeWindowRateLimiter() {
         return new TimeWindowRateLimiterImpl();
+    }
+
+    @Scheduled(fixedRate = 3600000)
+    public void cleanupExpiredData() {
+        long now = System.currentTimeMillis();
+        long expireTime = now - TimeUnit.HOURS.toMillis(cleanupIntervalHours);
+        
+        int emailLastSendTimeCleaned = 0;
+        int emailDailyCountCleaned = 0;
+        int ipLastRegisterTimeCleaned = 0;
+        int ipHourlyCountCleaned = 0;
+        
+        if (timeWindowRateLimiter() instanceof TimeWindowRateLimiterImpl) {
+            TimeWindowRateLimiterImpl impl = (TimeWindowRateLimiterImpl) timeWindowRateLimiter();
+            
+            emailLastSendTimeCleaned = impl.emailLastSendTime.entrySet().removeIf(entry -> entry.getValue() < expireTime) ? 1 : 0;
+            emailDailyCountCleaned = impl.emailDailyCount.entrySet().removeIf(entry -> entry.getValue().get() == 0) ? 1 : 0;
+            ipLastRegisterTimeCleaned = impl.ipLastRegisterTime.entrySet().removeIf(entry -> entry.getValue() < expireTime) ? 1 : 0;
+            ipHourlyCountCleaned = impl.ipHourlyCount.entrySet().removeIf(entry -> entry.getValue().get() == 0) ? 1 : 0;
+        }
+        
+        log.info("限流数据清理完成: emailLastSendTime={}, emailDailyCount={}, ipLastRegisterTime={}, ipHourlyCount={}", 
+            emailLastSendTimeCleaned, emailDailyCountCleaned, ipLastRegisterTimeCleaned, ipHourlyCountCleaned);
     }
 
     public interface RateLimiter {
@@ -115,10 +145,10 @@ public class RateLimitConfig {
     }
 
     public class TimeWindowRateLimiterImpl implements TimeWindowRateLimiter {
-        private final ConcurrentMap<String, Long> emailLastSendTime = new ConcurrentHashMap<>();
-        private final ConcurrentMap<String, AtomicInteger> emailDailyCount = new ConcurrentHashMap<>();
-        private final ConcurrentMap<String, Long> ipLastRegisterTime = new ConcurrentHashMap<>();
-        private final ConcurrentMap<String, AtomicInteger> ipHourlyCount = new ConcurrentHashMap<>();
+        final ConcurrentMap<String, Long> emailLastSendTime = new ConcurrentHashMap<>();
+        final ConcurrentMap<String, AtomicInteger> emailDailyCount = new ConcurrentHashMap<>();
+        final ConcurrentMap<String, Long> ipLastRegisterTime = new ConcurrentHashMap<>();
+        final ConcurrentMap<String, AtomicInteger> ipHourlyCount = new ConcurrentHashMap<>();
 
         @Override
         public boolean tryAcquireVerificationCode(String email) {

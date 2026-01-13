@@ -51,6 +51,9 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     @Value("${document.allowed-types:pdf,txt,md,markdown,docx,doc,pptx,ppt,xlsx,xls}")
     private String allowedTypes;
 
+    @Value("${document.max-file-size:52428800}")
+    private long maxFileSize;
+
     @Override
     @Transactional
     public KnowledgeDoc uploadDocument(MultipartFile file, KnowledgeDocRequest request, Long userId) {
@@ -61,6 +64,16 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         if (!isAllowedType(fileType)) {
             throw new BusinessException(ResultCode.UNSUPPORTED_FILE_TYPE, 
                     "不支持的文件类型: " + fileType + "，支持的类型: " + allowedTypes);
+        }
+
+        // 2. 验证文件大小
+        if (file.getSize() > maxFileSize) {
+            throw new BusinessException(ResultCode.DOC_UPLOAD_FAILED, 
+                    "文件过大: " + file.getSize() + " bytes，最大允许: " + maxFileSize + " bytes");
+        }
+
+        if (file.isEmpty()) {
+            throw new BusinessException(ResultCode.DOC_UPLOAD_FAILED, "文件为空");
         }
 
         // 2. 保存文件
