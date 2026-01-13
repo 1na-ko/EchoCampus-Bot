@@ -17,7 +17,7 @@
     "ant-design-vue": "^4.1.1",
     "axios": "^1.6.5",
     "dayjs": "^1.11.10",
-    "dompurify": "^3.0.8",
+    "dompurify": "^3.3.1",
     "highlight.js": "^11.9.0",
     "marked": "^11.1.1",
     "marked-highlight": "^2.2.3",
@@ -26,7 +26,6 @@
     "vue-router": "^4.2.5"
   },
   "devDependencies": {
-    "@types/dompurify": "^3.0.5",
     "@types/node": "^20.11.5",
     "@vitejs/plugin-vue": "^5.0.3",
     "@vue/test-utils": "^2.4.4",

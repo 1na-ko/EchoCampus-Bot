@@ -33,7 +33,7 @@ public class SecurityConfig {
     @Value("${security.csrf.enabled:false}")
     private boolean csrfEnabled;
 
-    @Value("${cors.allowed-origins:http://localhost:3001}")
+    @Value("${cors.allowed-origins:http://localhost:8083}")
     private String allowedOrigins;
 
     @Bean
@@ -82,6 +82,11 @@ public class SecurityConfig {
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
+        
+        System.out.println("CORS配置已加载 - 允许的源: " + allowedOrigins);
+        System.out.println("CORS配置已加载 - 允许的方法: " + configuration.getAllowedMethods());
+        System.out.println("CORS配置已加载 - 允许的头部: " + configuration.getAllowedHeaders());
+        
         return source;
     }
 }
