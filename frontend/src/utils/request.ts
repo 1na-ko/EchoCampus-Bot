@@ -98,7 +98,7 @@ service.interceptors.response.use(
           break
         case 413:
           // 处理文件过大错误
-          antMessage.error('文件过大，请选择小于50MB的文件')
+          antMessage.error('文件过大，请选择小于100MB的文件')
           break
         case 415:
           // 处理不支持的文件类型错误

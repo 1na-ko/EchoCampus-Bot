@@ -200,7 +200,7 @@
                     <a-button :disabled="showProgress" class="upload-trigger-btn">
                        <UploadOutlined /> 选择文件
                     </a-button>
-                    <span class="upload-hint">支持 PDF, Markdown, Word, PPT, Excel 等文档格式（最大 50MB）</span>
+                    <span class="upload-hint">支持 PDF, Markdown, Word, PPT, Excel 等文档格式（最大 100MB）</span>
                   </div>
                </a-upload>
           </a-form-item>
@@ -317,7 +317,7 @@
 </template>
 
 <script setup lang="ts">
-import { Modal, message } from 'ant-design-vue'
+import { Modal, message, Upload } from 'ant-design-vue'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import type { KnowledgeDoc, KnowledgeDocRequest } from '@/types'
 import dayjs from 'dayjs'
@@ -384,23 +384,29 @@ const editForm = reactive<KnowledgeDocRequest>({
 })
 
 const beforeUpload = (file: File) => {
-  // 检查文件大小（50MB限制）
-  const isLt50M = file.size / 1024 / 1024 < 50
-  if (!isLt50M) {
-    message.error('文件大小不能超过 50MB!')
-    return false
+  // 检查文件大小（100MB限制）
+  const isLt100M = file.size / 1024 / 1024 < 100
+  if (!isLt100M) {
+    message.error('文件大小不能超过 100MB!')
+    // 清理文件列表，移除无效文件
+    fileList.value = []
+    return Upload.LIST_IGNORE
   }
   
   // 检查文件是否为空
   if (file.size === 0) {
     message.error('文件不能为空!')
-    return false
+    // 清理文件列表，移除无效文件
+    fileList.value = []
+    return Upload.LIST_IGNORE
   }
   
   // 检查文件名是否有效
   if (!file.name || file.name.trim() === '') {
     message.error('文件名不能为空!')
-    return false
+    // 清理文件列表，移除无效文件
+    fileList.value = []
+    return Upload.LIST_IGNORE
   }
   
   // 检查文件扩展名
@@ -410,7 +416,9 @@ const beforeUpload = (file: File) => {
   
   if (!hasValidExtension) {
     message.error('不支持的文件格式，请选择 PDF、Markdown、Word、PPT 或 Excel 文件')
-    return false
+    // 清理文件列表，移除无效文件
+    fileList.value = []
+    return Upload.LIST_IGNORE
   }
   
   // Auto set title from filename (remove extension)

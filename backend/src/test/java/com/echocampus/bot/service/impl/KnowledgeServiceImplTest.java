@@ -48,7 +48,7 @@ class KnowledgeServiceImplTest {
     void setUp() {
         ReflectionTestUtils.setField(knowledgeService, "uploadPath", "./uploads");
         ReflectionTestUtils.setField(knowledgeService, "allowedTypes", "pdf,txt,md,docx");
-        ReflectionTestUtils.setField(knowledgeService, "maxFileSize", 52428800L);
+        ReflectionTestUtils.setField(knowledgeService, "maxFileSize", 104857600L);
     }
 
     @Test
