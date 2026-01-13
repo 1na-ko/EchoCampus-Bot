@@ -25,6 +25,8 @@ public class PdfDocumentParser implements DocumentParser {
 
     @Override
     public String parse(String filePath) throws DocumentParseException {
+        validateFilePath(filePath);
+        
         try (PDDocument document = Loader.loadPDF(new File(filePath))) {
             PDFTextStripper stripper = new PDFTextStripper();
             
@@ -46,6 +48,8 @@ public class PdfDocumentParser implements DocumentParser {
 
     @Override
     public DocumentMetadata getMetadata(String filePath) throws DocumentParseException {
+        validateFilePath(filePath);
+        
         try (PDDocument document = Loader.loadPDF(new File(filePath))) {
             PDDocumentInformation info = document.getDocumentInformation();
             

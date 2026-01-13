@@ -22,6 +22,8 @@ public class DocxDocumentParser implements DocumentParser {
 
     @Override
     public String parse(String filePath) throws DocumentParseException {
+        validateFilePath(filePath);
+        
         try (FileInputStream fis = new FileInputStream(filePath);
              XWPFDocument document = new XWPFDocument(fis)) {
             
@@ -65,6 +67,8 @@ public class DocxDocumentParser implements DocumentParser {
 
     @Override
     public DocumentMetadata getMetadata(String filePath) throws DocumentParseException {
+        validateFilePath(filePath);
+        
         try (FileInputStream fis = new FileInputStream(filePath);
              XWPFDocument document = new XWPFDocument(fis)) {
             
@@ -84,7 +88,33 @@ public class DocxDocumentParser implements DocumentParser {
             }
             
             // 计算页数（估算：每页约3000字符）
-            String content = parse(filePath);
+            StringBuilder text = new StringBuilder();
+            
+            // 提取段落文本
+            for (XWPFParagraph paragraph : document.getParagraphs()) {
+                String paragraphText = paragraph.getText();
+                if (paragraphText != null && !paragraphText.trim().isEmpty()) {
+                    text.append(paragraphText.trim()).append("\n");
+                }
+            }
+            
+            // 提取表格文本
+            for (XWPFTable table : document.getTables()) {
+                for (XWPFTableRow row : table.getRows()) {
+                    StringBuilder rowText = new StringBuilder();
+                    for (XWPFTableCell cell : row.getTableCells()) {
+                        String cellText = cell.getText();
+                        if (cellText != null && !cellText.trim().isEmpty()) {
+                            rowText.append(cellText.trim()).append("\t");
+                        }
+                    }
+                    if (rowText.length() > 0) {
+                        text.append(rowText.toString().trim()).append("\n");
+                    }
+                }
+            }
+            
+            String content = text.toString().trim();
             int estimatedPages = Math.max(1, content.length() / 3000);
             
             return DocumentMetadata.builder()

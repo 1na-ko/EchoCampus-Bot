@@ -23,6 +23,8 @@ public class DocDocumentParser implements DocumentParser {
 
     @Override
     public String parse(String filePath) throws DocumentParseException {
+        validateFilePath(filePath);
+        
         try (FileInputStream fis = new FileInputStream(filePath);
              HWPFDocument document = new HWPFDocument(fis);
              WordExtractor extractor = new WordExtractor(document)) {
@@ -47,6 +49,8 @@ public class DocDocumentParser implements DocumentParser {
 
     @Override
     public DocumentMetadata getMetadata(String filePath) throws DocumentParseException {
+        validateFilePath(filePath);
+        
         try (FileInputStream fis = new FileInputStream(filePath);
              HWPFDocument document = new HWPFDocument(fis)) {
             

@@ -61,8 +61,9 @@ export const useKnowledgeStore = defineStore('knowledge', {
         message.success('文档上传成功，正在处理中...')
         this.documents.unshift(res.data)
         return res.data
-      } catch (error) {
+      } catch (error: any) {
         console.error('Upload document error:', error)
+        // 错误信息已经在request.ts的拦截器中处理并显示
         return null
       }
     },

@@ -181,3 +181,29 @@ export interface DocumentProgress {
   failed: boolean
   errorMessage?: string
 }
+
+// 文件上传限制常量
+export const FILE_UPLOAD_LIMITS = {
+  MAX_SIZE_MB: 50,
+  MAX_SIZE_BYTES: 50 * 1024 * 1024,
+  ALLOWED_EXTENSIONS: ['.pdf', '.txt', '.md', '.markdown', '.docx', '.doc', '.pptx', '.ppt', '.xlsx', '.xls'],
+} as const
+
+// 错误类型
+export type ApiErrorType = 
+  | 'UNAUTHORIZED'      // 401 未授权
+  | 'FORBIDDEN'         // 403 权限不足
+  | 'NOT_FOUND'         // 404 资源不存在
+  | 'PAYLOAD_TOO_LARGE' // 413 文件过大
+  | 'UNSUPPORTED_MEDIA' // 415 不支持的媒体类型
+  | 'INTERNAL_ERROR'    // 500 服务器错误
+  | 'GATEWAY_TIMEOUT'   // 504 网关超时
+  | 'NETWORK_ERROR'     // 网络错误
+  | 'UNKNOWN'           // 未知错误
+
+export interface ApiError {
+  type: ApiErrorType
+  message: string
+  code?: number
+  details?: any
+}

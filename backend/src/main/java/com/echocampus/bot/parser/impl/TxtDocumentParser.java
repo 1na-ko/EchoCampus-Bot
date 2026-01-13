@@ -24,6 +24,8 @@ public class TxtDocumentParser implements DocumentParser {
 
     @Override
     public String parse(String filePath) throws DocumentParseException {
+        validateFilePath(filePath);
+        
         try {
             Path path = Paths.get(filePath);
             
@@ -48,6 +50,8 @@ public class TxtDocumentParser implements DocumentParser {
 
     @Override
     public DocumentMetadata getMetadata(String filePath) throws DocumentParseException {
+        validateFilePath(filePath);
+        
         try {
             Path path = Paths.get(filePath);
             

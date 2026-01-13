@@ -27,6 +27,22 @@ service.interceptors.request.use(
       config.headers['X-User-Id'] = userId
     }
     
+    // 添加CSRF token支持（如果后端启用了CSRF保护）
+    // 从cookie中读取XSRF-TOKEN
+    const getCookie = (name: string): string | null => {
+      const value = `; ${document.cookie}`
+      const parts = value.split(`; ${name}=`)
+      if (parts.length === 2) {
+        return parts.pop()?.split(';').shift() || null
+      }
+      return null
+    }
+    
+    const csrfToken = getCookie('XSRF-TOKEN')
+    if (csrfToken && config.headers) {
+      config.headers['X-XSRF-TOKEN'] = csrfToken
+    }
+    
     return config
   },
   (error) => {
@@ -70,13 +86,36 @@ service.interceptors.response.use(
           window.location.href = '/student4/login'
           break
         case 403:
-          antMessage.error('拒绝访问')
+          // 处理权限不足错误
+          if (data?.message) {
+            antMessage.error(data.message)
+          } else {
+            antMessage.error('权限不足，无法访问该资源')
+          }
           break
         case 404:
           antMessage.error('请求资源不存在')
           break
+        case 413:
+          // 处理文件过大错误
+          antMessage.error('文件过大，请选择小于50MB的文件')
+          break
+        case 415:
+          // 处理不支持的文件类型错误
+          antMessage.error('不支持的文件类型')
+          break
         case 500:
-          antMessage.error(data?.message || '服务器错误')
+          // 处理服务器错误，包括文件验证错误
+          if (data?.message) {
+            // 检查是否是文件验证相关的错误
+            if (data.message.includes('文件') || data.message.includes('File')) {
+              antMessage.error(data.message)
+            } else {
+              antMessage.error(data.message || '服务器错误')
+            }
+          } else {
+            antMessage.error('服务器错误')
+          }
           break
         case 504:
           antMessage.error(data?.message || '系统繁忙，请稍后再试')
@@ -141,14 +180,38 @@ export function createSSERequest(
   const token = localStorage.getItem('token')
   const userId = localStorage.getItem('userId')
   
+  // 获取CSRF token
+  const getCookie = (name: string): string | null => {
+    const value = `; ${document.cookie}`
+    const parts = value.split(`; ${name}=`)
+    if (parts.length === 2) {
+      return parts.pop()?.split(';').shift() || null
+    }
+    return null
+  }
+  
+  const csrfToken = getCookie('XSRF-TOKEN')
+  
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Accept': 'text/event-stream',
+  }
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  
+  if (userId) {
+    headers['X-User-Id'] = userId
+  }
+  
+  if (csrfToken) {
+    headers['X-XSRF-TOKEN'] = csrfToken
+  }
+  
   fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://150.158.97.39:8083/api'}${url}`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'text/event-stream',
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      ...(userId ? { 'X-User-Id': userId } : {}),
-    },
+    headers,
     body: JSON.stringify(data),
     signal: controller.signal,
     credentials: 'include',

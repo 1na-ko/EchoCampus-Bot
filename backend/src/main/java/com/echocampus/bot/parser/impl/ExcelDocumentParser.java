@@ -25,6 +25,8 @@ public class ExcelDocumentParser implements DocumentParser {
 
     @Override
     public String parse(String filePath) throws DocumentParseException {
+        validateFilePath(filePath);
+        
         try (FileInputStream fis = new FileInputStream(filePath)) {
             Workbook workbook = createWorkbook(filePath, fis);
             
@@ -90,6 +92,8 @@ public class ExcelDocumentParser implements DocumentParser {
 
     @Override
     public DocumentMetadata getMetadata(String filePath) throws DocumentParseException {
+        validateFilePath(filePath);
+        
         try (FileInputStream fis = new FileInputStream(filePath)) {
             Workbook workbook = createWorkbook(filePath, fis);
             

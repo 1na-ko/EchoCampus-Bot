@@ -22,6 +22,8 @@ public class PptDocumentParser implements DocumentParser {
 
     @Override
     public String parse(String filePath) throws DocumentParseException {
+        validateFilePath(filePath);
+        
         try (FileInputStream fis = new FileInputStream(filePath);
              XMLSlideShow ppt = new XMLSlideShow(fis)) {
             
@@ -64,6 +66,8 @@ public class PptDocumentParser implements DocumentParser {
 
     @Override
     public DocumentMetadata getMetadata(String filePath) throws DocumentParseException {
+        validateFilePath(filePath);
+        
         try (FileInputStream fis = new FileInputStream(filePath);
              XMLSlideShow ppt = new XMLSlideShow(fis)) {
             
