@@ -1,22 +1,26 @@
+# ==========================================
+# 生产环境 - Docker Compose 配置
+# 使用方式：docker-compose -f docker-compose.prod.yml up -d
+# ==========================================
+
 version: '3.8'
 
 services:
   # PostgreSQL数据库
   postgres:
-    container_name: echocampus-postgres
+    container_name: echocampus-postgres-prod
     image: postgres:15-alpine
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-echocampus_bot}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./docs/数据库设计.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-echocampus_bot}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -24,37 +28,9 @@ services:
       - echocampus-network
     restart: unless-stopped
 
-  # Milvus向量数据库 - 单机版
-  milvus-standalone:
-    container_name: milvus-standalone
-    image: milvusdb/milvus:v2.3.4
-    command: ["milvus", "run", "standalone"]
-    environment:
-      ETCD_ENDPOINTS: etcd:2379
-      MINIO_ADDRESS: minio:9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-    volumes:
-      - milvus_data:/var/lib/milvus
-    ports:
-      - "19530:19530"
-      - "9091:9091"
-    depends_on:
-      - etcd
-      - minio
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
-      interval: 30s
-      start_period: 90s
-      timeout: 20s
-      retries: 3
-    networks:
-      - echocampus-network
-    restart: unless-stopped
-
   # etcd - Milvus元数据存储
   etcd:
-    container_name: milvus-etcd
+    container_name: echocampus-etcd-prod
     image: quay.io/coreos/etcd:v3.5.5
     environment:
       - ETCD_AUTO_COMPACTION_MODE=revision
@@ -75,17 +51,17 @@ services:
 
   # MinIO - Milvus对象存储
   minio:
-    container_name: milvus-minio
+    container_name: echocampus-minio-prod
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z
     environment:
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
     volumes:
       - minio_data:/minio_data
     command: minio server /minio_data --console-address ":9001"
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
@@ -95,39 +71,52 @@ services:
       - echocampus-network
     restart: unless-stopped
 
-  # Milvus管理界面 (可选)
-  attu:
-    container_name: milvus-attu
-    image: zilliz/attu:v2.3.5
+  # Milvus向量数据库 - 单机版
+  milvus-standalone:
+    container_name: echocampus-milvus-prod
+    image: milvusdb/milvus:v2.3.4
+    command: ["milvus", "run", "standalone"]
     environment:
-      MILVUS_URL: milvus-standalone:19530
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - milvus_data:/var/lib/milvus
     ports:
-      - "8000:3000"
+      - "${MILVUS_PORT:-19530}:19530"
+      - "${MILVUS_METRICS_PORT:-9091}:9091"
     depends_on:
-      - milvus-standalone
+      - etcd
+      - minio
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
     networks:
       - echocampus-network
     restart: unless-stopped
 
   # 后端服务
   echocampus-bot:
-    container_name: echocampus-bot
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    container_name: echocampus-bot-prod
+    image: ${DOCKER_IMAGE:-echocampus-bot:latest}
     environment:
-      SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-echocampus_bot}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       MILVUS_HOST: milvus-standalone
       MILVUS_PORT: 19530
       ALIYUN_API_KEY: ${ALIYUN_API_KEY}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
       JWT_SECRET: ${JWT_SECRET}
       DOCUMENT_UPLOAD_PATH: /app/uploads
-      MAIL_USERNAME: ${MAIL_USERNAME:-EchoTechStudio@163.com}
-      MAIL_PASSWORD: ${MAIL_PASSWORD:-ZWw87M2Y3hcmrUSG}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
     volumes:
       - uploads_data:/app/uploads
       - logs_data:/app/logs
@@ -147,6 +136,15 @@ services:
     networks:
       - echocampus-network
     restart: unless-stopped
+    # 生产环境资源限制（可选）
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
 
 networks:
   echocampus-network:
