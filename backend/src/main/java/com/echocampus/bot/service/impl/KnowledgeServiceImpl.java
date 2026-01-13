@@ -51,7 +51,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
     @Value("${document.allowed-types:pdf,txt,md,markdown,docx,doc,pptx,ppt,xlsx,xls}")
     private String allowedTypes;
 
-    @Value("${document.max-file-size:52428800}")
+    @Value("${document.max-file-size:104857600}")
     private long maxFileSize;
 
     @Override
