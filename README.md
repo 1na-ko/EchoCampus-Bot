@@ -1254,6 +1254,10 @@ cd EchoCampus-Bot
 cp .env.example .env
 # 编辑 .env 文件,配置数据库密码、AI API密钥等
 
+# (可选) 配置部署信息
+cp .deployment.env.example .deployment.env
+# 编辑 .deployment.env 文件,配置阿里云镜像仓库和服务器部署信息
+
 # 3. 构建并启动服务
 docker-compose up -d
 
@@ -1554,6 +1558,9 @@ logging:
 
 ## 📚 相关文档
 
+- [快速部署指南](./docs/快速部署指南.md) - 本地开发和生产环境部署指南
+- [配置审计报告](./docs/配置审计报告.md) - 配置体系优化和安全审计
+- [配置迁移指南](./docs/配置迁移指南.md) - 从旧配置迁移到新配置的指南
 - [数据库设计](./docs/数据库设计.sql) - PostgreSQL数据库结构设计
 - [API接口设计](./docs/API接口设计.yaml) - RESTful API接口文档
 - [IT知识问答机器人_项目结构设计](./docs/IT知识问答机器人_项目结构设计.md) - 详细的项目结构设计
@@ -1561,6 +1568,30 @@ logging:
 - [项目快速入门指南](./docs/项目快速入门指南.md) - 快速开始指南
 - [文档解析器实现指南](./docs/文档解析器实现指南.md) - 文档解析器详细实现指南
 - [代码质量审查报告](./代码质量审查报告.md) - 代码质量审查报告
+
+## 🔧 配置文件说明
+
+项目包含以下配置文件：
+
+| 文件名 | 说明 | 是否提交到Git |
+|--------|------|--------------|
+| `.env.example` | 应用环境变量模板 | ✅ 是 |
+| `.env` | 实际应用环境变量（包含API密钥等敏感信息） | ❌ 否 |
+| `.deployment.env.example` | 部署配置模板 | ✅ 是 |
+| `.deployment.env` | 实际部署配置（包含服务器信息、镜像仓库凭证等） | ❌ 否 |
+| `docker-compose.dev.yml` | 本地开发环境配置 | ✅ 是 |
+| `docker-compose.prod.yml` | 生产环境配置 | ✅ 是 |
+
+**首次使用请执行**：
+```bash
+# 配置应用环境变量
+cp .env.example .env
+# 编辑 .env 填入API密钥等信息
+
+# 配置部署信息（仅在需要部署到生产环境时）
+cp .deployment.env.example .deployment.env
+# 编辑 .deployment.env 填入服务器和镜像仓库信息
+```
 
 ## 🔗 参考资源
 

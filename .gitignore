@@ -63,9 +63,11 @@ uploads/
 .env
 .env.local
 .env.*.local
+.deployment.env
 
 # 不要忽略环境变量模板
 !.env.example
+!.deployment.env.example
 
 # Docker Compose配置文件不再被忽略（已移除敏感信息）
 # docker-compose.yml 和 docker-compose-server.yml 已被标准化配置替代
