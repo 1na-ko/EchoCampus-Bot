@@ -77,6 +77,14 @@ public interface DocumentProgressService {
     DocumentProgressDTO getProgress(Long docId);
 
     /**
+     * 获取或构建当前进度
+     * 如果缓存中没有进度信息，则根据文档状态构建
+     * @param docId 文档ID
+     * @return 当前进度信息
+     */
+    DocumentProgressDTO getOrBuildProgress(Long docId);
+
+    /**
      * 清除进度缓存
      * @param docId 文档ID
      */
