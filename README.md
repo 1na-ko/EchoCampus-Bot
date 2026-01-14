@@ -6,7 +6,9 @@
 
 ## 📋 项目概述
 
-本项目是一个基于 **RAG (Retrieval-Augmented Generation)** 技术的智能校园/IT知识问答机器人，采用前后端分离架构，结合 Spring Boot、Vue.js、PostgreSQL、Milvus 等现代化技术栈实现。
+本项目是一个基于 **RAG (Retrieval-Augmented Generation)** 技术的智能校园/IT知识问答机器人，采用前后端分离架构，结合 Spring Boot、Vue.js、PostgreSQL 等现代化技术栈实现。
+
+> **🆕 新架构**: 现已支持 **PostgreSQL + pgvector** 统一架构，简化部署，降低运维成本。详见 [pgvector迁移指南](docs/migration/pgvector迁移实施指南.md)。
 
 📚 **详细文档**: 请参阅 [docs/README.md](docs/README.md) 获取完整文档索引。
 
@@ -91,9 +93,11 @@
     - OkHttp: HTTP客户端
 
 #### 数据存储层 (Data Layer)
-- **关系型数据库**: PostgreSQL 15
+- **关系型数据库**: PostgreSQL 15/16
     - 存储用户信息、对话历史、知识库元数据
-- **向量数据库**: Milvus v2.3.4
+- **向量数据库**: **pgvector** (推荐) 或 Milvus v2.3.4
+    - **pgvector**: PostgreSQL原生向量扩展，简化架构
+    - **Milvus**: 独立向量数据库，适用于超大规模场景
     - 存储知识库文档的向量化表示
     - 支持高效的相似度检索
 

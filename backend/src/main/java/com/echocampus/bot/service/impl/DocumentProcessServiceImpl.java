@@ -31,7 +31,7 @@ public class DocumentProcessServiceImpl implements DocumentProcessService {
     private final DocumentParserFactory parserFactory;
     private final TextChunkService textChunkService;
     private final EmbeddingService embeddingService;
-    private final MilvusService milvusService;
+    private final VectorService vectorService;
     private final DocumentProgressService documentProgressService;
 
     @Override
@@ -110,8 +110,8 @@ public class DocumentProcessServiceImpl implements DocumentProcessService {
             }
             log.info("向量化完成: 向量数量={}", vectors.size());
             
-            // 4. 存入Milvus
-            log.info("步骤4: 存入Milvus向量数据库");
+            // 4. 存入向量数据库
+            log.info("步骤4: 存入向量数据库");
             documentProgressService.sendStoringProgress(docId, 0, "准备存储向量数据...");
             
             List<Long> chunkIds = chunks.stream()
@@ -126,7 +126,7 @@ public class DocumentProcessServiceImpl implements DocumentProcessService {
             
             documentProgressService.sendStoringProgress(docId, 30, "正在连接向量数据库...");
             
-            milvusService.insertVectors(vectors, chunkIds, docIds, texts, categories);
+            vectorService.insertVectors(vectors, chunkIds, docIds, texts, categories);
             
             documentProgressService.sendStoringProgress(docId, 80, "向量数据已存储");
             
