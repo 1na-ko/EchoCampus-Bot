@@ -338,7 +338,7 @@ public class ChatServiceImpl implements ChatService {
      * 处理知识来源更新
      */
     private void handleSourcesUpdate(
-            List<RagService.SourceDoc> sources,
+            List<RagService.SourceInfo> sources,
             Long conversationId,
             AtomicLong currentMessageId,
             List<ChatResponse.SourceDoc> allSourceDocs,
