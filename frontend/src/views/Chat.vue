@@ -328,10 +328,11 @@ marked.use(markedHighlight({
 
 marked.setOptions({
   breaks: true,
+  async: false,
 } as MarkedOptions)
 
 const renderMarkdown = (content: string) => {
-  const html = marked(content)
+  const html = marked.parse(content, { async: false }) as string
   return DOMPurify.sanitize(html)
 }
 
