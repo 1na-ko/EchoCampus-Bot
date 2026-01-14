@@ -1,8 +1,14 @@
-# 智能校园/IT知识问答机器人 - 项目结构设计文档
+# EchoCampus-Bot - 智能校园问答机器人
+
+> **最后更新**: 2026年1月14日 | **版本**: 1.0.0
+
+---
 
 ## 📋 项目概述
 
-本项目是一个基于**RAG(Retrieval-Augmented Generation)**技术的智能校园/IT知识问答机器人,采用前后端分离架构,结合Spring Boot、Vue.js、PostgreSQL、Milvus等现代化技术栈实现。
+本项目是一个基于 **RAG (Retrieval-Augmented Generation)** 技术的智能校园/IT知识问答机器人，采用前后端分离架构，结合 Spring Boot、Vue.js、PostgreSQL、Milvus 等现代化技术栈实现。
+
+📚 **详细文档**: 请参阅 [docs/README.md](docs/README.md) 获取完整文档索引。
 
 ### 核心功能
 - 💬 智能问答: 基于RAG技术提供准确的校园知识问答
@@ -248,7 +254,7 @@ INSERT INTO system_config (config_key, config_value, config_type, description) V
 ('rag.max_tokens', '1000', 'NUMBER', 'AI生成答案的最大token数'),
 ('rag.similarity_threshold', '0.7', 'NUMBER', '相似度阈值,低于此值的结果将被过滤'),
 ('milvus.collection_name', 'echocampus_knowledge', 'STRING', 'Milvus向量集合名称'),
-('milvus.dimension', '1536', 'NUMBER', '向量维度(根据Qwen3-Embedding模型)'),
+('milvus.dimension', '1024', 'NUMBER', '向量维度(根据Qwen3-Embedding模型text-embedding-v3)'),
 ('milvus.metric_type', 'COSINE', 'STRING', '相似度度量类型(L2, IP, COSINE)'),
 ('milvus.index_type', 'IVF_FLAT', 'STRING', '索引类型(IVF_FLAT, HNSW等)'),
 ('milvus.nprobe', '10', 'NUMBER', '搜索的簇数量'),
@@ -1254,6 +1260,10 @@ cd EchoCampus-Bot
 cp .env.example .env
 # 编辑 .env 文件,配置数据库密码、AI API密钥等
 
+# (可选) 配置部署信息
+cp .deployment.env.example .deployment.env
+# 编辑 .deployment.env 文件,配置阿里云镜像仓库和服务器部署信息
+
 # 3. 构建并启动服务
 docker-compose up -d
 
@@ -1554,6 +1564,9 @@ logging:
 
 ## 📚 相关文档
 
+- [快速部署指南](./docs/快速部署指南.md) - 本地开发和生产环境部署指南
+- [配置审计报告](./docs/配置审计报告.md) - 配置体系优化和安全审计
+- [配置迁移指南](./docs/配置迁移指南.md) - 从旧配置迁移到新配置的指南
 - [数据库设计](./docs/数据库设计.sql) - PostgreSQL数据库结构设计
 - [API接口设计](./docs/API接口设计.yaml) - RESTful API接口文档
 - [IT知识问答机器人_项目结构设计](./docs/IT知识问答机器人_项目结构设计.md) - 详细的项目结构设计
@@ -1561,6 +1574,30 @@ logging:
 - [项目快速入门指南](./docs/项目快速入门指南.md) - 快速开始指南
 - [文档解析器实现指南](./docs/文档解析器实现指南.md) - 文档解析器详细实现指南
 - [代码质量审查报告](./代码质量审查报告.md) - 代码质量审查报告
+
+## 🔧 配置文件说明
+
+项目包含以下配置文件：
+
+| 文件名 | 说明 | 是否提交到Git |
+|--------|------|--------------|
+| `.env.example` | 应用环境变量模板 | ✅ 是 |
+| `.env` | 实际应用环境变量（包含API密钥等敏感信息） | ❌ 否 |
+| `.deployment.env.example` | 部署配置模板 | ✅ 是 |
+| `.deployment.env` | 实际部署配置（包含服务器信息、镜像仓库凭证等） | ❌ 否 |
+| `docker-compose.dev.yml` | 本地开发环境配置 | ✅ 是 |
+| `docker-compose.prod.yml` | 生产环境配置 | ✅ 是 |
+
+**首次使用请执行**：
+```bash
+# 配置应用环境变量
+cp .env.example .env
+# 编辑 .env 填入API密钥等信息
+
+# 配置部署信息（仅在需要部署到生产环境时）
+cp .deployment.env.example .deployment.env
+# 编辑 .deployment.env 填入服务器和镜像仓库信息
+```
 
 ## 🔗 参考资源
 
