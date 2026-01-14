@@ -1,9 +1,11 @@
 package com.echocampus.bot.service.impl;
 
 import com.echocampus.bot.dto.response.DocumentProgressDTO;
+import com.echocampus.bot.entity.KnowledgeDoc;
 import com.echocampus.bot.service.DocumentProgressService;
-import lombok.RequiredArgsConstructor;
+import com.echocampus.bot.service.KnowledgeService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -21,11 +23,16 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class DocumentProgressServiceImpl implements DocumentProgressService {
 
     private static final int MAX_SSE_CONNECTIONS = 50;
     private static final long SSE_TIMEOUT_MINUTES = 30;
+
+    private final KnowledgeService knowledgeService;
+
+    public DocumentProgressServiceImpl(@Lazy KnowledgeService knowledgeService) {
+        this.knowledgeService = knowledgeService;
+    }
 
     /**
      * 存储每个文档的SSE发射器
@@ -226,6 +233,53 @@ public class DocumentProgressServiceImpl implements DocumentProgressService {
     @Override
     public DocumentProgressDTO getProgress(Long docId) {
         return progressCache.get(docId);
+    }
+
+    @Override
+    public DocumentProgressDTO getOrBuildProgress(Long docId) {
+        // 先尝试从缓存获取
+        DocumentProgressDTO progress = progressCache.get(docId);
+        if (progress != null) {
+            return progress;
+        }
+        
+        // 如果缓存中没有，则根据文档状态构建进度信息
+        KnowledgeDoc doc = knowledgeService.getDocumentById(docId);
+        if (doc == null) {
+            return null;
+        }
+        
+        String status = doc.getProcessStatus();
+        if ("COMPLETED".equals(status)) {
+            progress = DocumentProgressDTO.completed(docId, doc.getVectorCount() != null ? doc.getVectorCount() : 0);
+        } else if ("FAILED".equals(status)) {
+            progress = DocumentProgressDTO.failed(docId, "UNKNOWN", doc.getProcessMessage());
+        } else if ("PROCESSING".equals(status)) {
+            progress = DocumentProgressDTO.builder()
+                    .docId(docId)
+                    .stage("PROCESSING")
+                    .stageName("处理中")
+                    .progress(0)
+                    .totalProgress(0)
+                    .message("正在处理中...")
+                    .completed(false)
+                    .failed(false)
+                    .build();
+        } else {
+            // PENDING 或其他状态
+            progress = DocumentProgressDTO.builder()
+                    .docId(docId)
+                    .stage("PENDING")
+                    .stageName("等待处理")
+                    .progress(0)
+                    .totalProgress(0)
+                    .message("等待处理...")
+                    .completed(false)
+                    .failed(false)
+                    .build();
+        }
+        
+        return progress;
     }
 
     @Override

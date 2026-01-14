@@ -1,7 +1,9 @@
 -- ============================================
 -- EchoCampus 校园问答机器人 - PostgreSQL数据库设计
 -- ============================================
--- 注意：数据库已由Docker环境变量自动创建，此处直接使用
+-- 最后更新: 2026年1月14日
+-- 版本: 1.0.0
+-- 注意: 数据库已由Docker环境变量自动创建，此处直接使用
 
 -- ============================================
 -- 1. 用户表 (users)
@@ -217,7 +219,7 @@ INSERT INTO system_config (config_key, config_value, config_type, description) V
 ('rag.max_tokens', '1000', 'NUMBER', 'AI生成答案的最大token数'),
 ('rag.similarity_threshold', '0.7', 'NUMBER', '相似度阈值,低于此值的结果将被过滤'),
 ('milvus.collection_name', 'echocampus_knowledge', 'STRING', 'Milvus向量集合名称'),
-('milvus.dimension', '1536', 'NUMBER', '向量维度(根据Qwen3-Embedding模型)'),
+('milvus.dimension', '1024', 'NUMBER', '向量维度(根据Qwen3-Embedding模型text-embedding-v3)'),
 ('milvus.metric_type', 'COSINE', 'STRING', '相似度度量类型(L2, IP, COSINE)'),
 ('milvus.index_type', 'IVF_FLAT', 'STRING', '索引类型(IVF_FLAT, HNSW等)'),
 ('milvus.nprobe', '10', 'NUMBER', '搜索的簇数量'),

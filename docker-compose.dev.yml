@@ -1,9 +1,14 @@
+# ==========================================
+# 本地开发环境 - Docker Compose 配置
+# 使用方式：docker-compose -f docker-compose.dev.yml up -d
+# ==========================================
+
 version: '3.8'
 
 services:
   # PostgreSQL数据库
   postgres:
-    container_name: echocampus-postgres
+    container_name: echocampus-postgres-dev
     image: postgres:15-alpine
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-echocampus_bot}
@@ -24,9 +29,52 @@ services:
       - echocampus-network
     restart: unless-stopped
 
+  # etcd - Milvus元数据存储
+  etcd:
+    container_name: echocampus-etcd-dev
+    image: quay.io/coreos/etcd:v3.5.5
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - etcd_data:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - echocampus-network
+    restart: unless-stopped
+
+  # MinIO - Milvus对象存储
+  minio:
+    container_name: echocampus-minio-dev
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      MINIO_ACCESS_KEY: <REDACTED_WEAK_PASSWORD>
+      MINIO_SECRET_KEY: <REDACTED_WEAK_PASSWORD>
+    volumes:
+      - minio_data:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - echocampus-network
+    restart: unless-stopped
+
   # Milvus向量数据库 - 单机版
   milvus-standalone:
-    container_name: milvus-standalone
+    container_name: echocampus-milvus-dev
     image: milvusdb/milvus:v2.3.4
     command: ["milvus", "run", "standalone"]
     environment:
@@ -52,52 +100,9 @@ services:
       - echocampus-network
     restart: unless-stopped
 
-  # etcd - Milvus元数据存储
-  etcd:
-    container_name: milvus-etcd
-    image: quay.io/coreos/etcd:v3.5.5
-    environment:
-      - ETCD_AUTO_COMPACTION_MODE=revision
-      - ETCD_AUTO_COMPACTION_RETENTION=1000
-      - ETCD_QUOTA_BACKEND_BYTES=4294967296
-      - ETCD_SNAPSHOT_COUNT=50000
-    volumes:
-      - etcd_data:/etcd
-    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
-    healthcheck:
-      test: ["CMD", "etcdctl", "endpoint", "health"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
-    networks:
-      - echocampus-network
-    restart: unless-stopped
-
-  # MinIO - Milvus对象存储
-  minio:
-    container_name: milvus-minio
-    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
-    environment:
-      MINIO_ACCESS_KEY: <REDACTED_WEAK_PASSWORD>
-      MINIO_SECRET_KEY: <REDACTED_WEAK_PASSWORD>
-    volumes:
-      - minio_data:/minio_data
-    command: minio server /minio_data --console-address ":9001"
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
-    networks:
-      - echocampus-network
-    restart: unless-stopped
-
-  # Milvus管理界面 (可选)
+  # Milvus管理界面（开发环境可选）
   attu:
-    container_name: milvus-attu
+    container_name: echocampus-attu-dev
     image: zilliz/attu:v2.3.5
     environment:
       MILVUS_URL: milvus-standalone:19530
@@ -111,12 +116,12 @@ services:
 
   # 后端服务
   echocampus-bot:
-    container_name: echocampus-bot
+    container_name: echocampus-bot-dev
     build:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      SPRING_PROFILES_ACTIVE: docker
+      SPRING_PROFILES_ACTIVE: dev
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-echocampus_bot}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-<REDACTED_WEAK_PASSWORD>}
@@ -126,8 +131,8 @@ services:
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
       JWT_SECRET: ${JWT_SECRET}
       DOCUMENT_UPLOAD_PATH: /app/uploads
-      MAIL_USERNAME: ${MAIL_USERNAME:-<REDACTED_EMAIL>}
-      MAIL_PASSWORD: ${MAIL_PASSWORD:-<REDACTED_EMAIL_AUTH_CODE>}
+      MAIL_USERNAME: ${MAIL_USERNAME:-your_email@163.com}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-your_email_password}
     volumes:
       - uploads_data:/app/uploads
       - logs_data:/app/logs

@@ -58,24 +58,29 @@ Thumbs.db
 # =========================
 # 上传文件目录
 uploads/
-# 本地配置（如有敏感信息）
-# 保持对敏感/本地配置文件的忽略，但不要通配忽略整个 resources/ 目录，
-# 因为我们需要将 mapper XML 文件纳入版本控制。
-/backend/src/main/resources/application-local.yml
-/backend/src/main/resources/application-local.properties
 
 # 环境变量配置文件（包含敏感信息）
 .env
+.env.local
+.env.*.local
+.deployment.env
 
-# Docker配置文件
+# 不要忽略环境变量模板
+!.env.example
+!.deployment.env.example
+
+# Docker Compose配置文件不再被忽略（已移除敏感信息）
+# docker-compose.yml 和 docker-compose-server.yml 已被标准化配置替代
+
+# 旧配置文件（如果存在）
 docker-compose.yml
 docker-compose-server.yml
 
-# 如果有其它按模式的临时或备份文件需要忽略，可使用更精确的模式
+# 临时和备份文件
 **/*.bak
 **/*.tmp
 
-# 明确包含后端 mapper 目录及其 XML 文件（反向匹配，用于取消上面的通配忽略）
+# 明确包含后端 mapper 目录及其 XML 文件
 !/backend/src/main/resources/mapper/
 !/backend/src/main/resources/mapper/*.xml
 # =========================
