@@ -1,8 +1,14 @@
-# 智能校园/IT知识问答机器人 - 项目结构设计文档
+# EchoCampus-Bot - 智能校园问答机器人
+
+> **最后更新**: 2026年1月14日 | **版本**: 1.0.0
+
+---
 
 ## 📋 项目概述
 
-本项目是一个基于**RAG(Retrieval-Augmented Generation)**技术的智能校园/IT知识问答机器人,采用前后端分离架构,结合Spring Boot、Vue.js、PostgreSQL、Milvus等现代化技术栈实现。
+本项目是一个基于 **RAG (Retrieval-Augmented Generation)** 技术的智能校园/IT知识问答机器人，采用前后端分离架构，结合 Spring Boot、Vue.js、PostgreSQL、Milvus 等现代化技术栈实现。
+
+📚 **详细文档**: 请参阅 [docs/README.md](docs/README.md) 获取完整文档索引。
 
 ### 核心功能
 - 💬 智能问答: 基于RAG技术提供准确的校园知识问答
@@ -248,7 +254,7 @@ INSERT INTO system_config (config_key, config_value, config_type, description) V
 ('rag.max_tokens', '1000', 'NUMBER', 'AI生成答案的最大token数'),
 ('rag.similarity_threshold', '0.7', 'NUMBER', '相似度阈值,低于此值的结果将被过滤'),
 ('milvus.collection_name', 'echocampus_knowledge', 'STRING', 'Milvus向量集合名称'),
-('milvus.dimension', '1536', 'NUMBER', '向量维度(根据Qwen3-Embedding模型)'),
+('milvus.dimension', '1024', 'NUMBER', '向量维度(根据Qwen3-Embedding模型text-embedding-v3)'),
 ('milvus.metric_type', 'COSINE', 'STRING', '相似度度量类型(L2, IP, COSINE)'),
 ('milvus.index_type', 'IVF_FLAT', 'STRING', '索引类型(IVF_FLAT, HNSW等)'),
 ('milvus.nprobe', '10', 'NUMBER', '搜索的簇数量'),

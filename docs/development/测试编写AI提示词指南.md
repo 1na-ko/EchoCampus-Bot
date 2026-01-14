@@ -1,18 +1,21 @@
 # EchoCampus-Bot 测试套件编写指南
 
+> **最后更新**: 2026年1月14日  
+> **适用版本**: EchoCampus-Bot 1.0.0
+
+---
+
 ## 一、项目上下文
 
 **项目名称**: EchoCampus-Bot（高校知识库AI对话机器人）
 
 **技术栈**：
-- 后端：Spring Boot 3.x + MyBatis + PostgreSQL + JWT
-- 前端：Vue 3 + TypeScript + Pinia + Vite
+- 后端：Spring Boot 3.2.1 + MyBatis-Plus 3.5.5 + PostgreSQL 15 + JWT
+- 前端：Vue 3.4.0 + TypeScript 5.3.3 + Pinia 2.1.7 + Vite 5.0.11
 
 **测试框架**：
-- 后端：JUnit 5 + Mockito + TestContainers (PostgreSQL)
-- 前端：Vitest + @vue/test-utils + jsdom
-
----
+- 后端：JUnit 5 + Mockito + Spring Boot Test
+- 前端：Vitest 1.2.2 + @vue/test-utils 2.4.4 + jsdom
 
 ## 二、测试优先级与目标
 
