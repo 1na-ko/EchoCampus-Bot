@@ -1,12 +1,20 @@
 package com.echocampus.bot.service;
 
 import com.echocampus.bot.dto.response.DocumentProgressDTO;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
  * 文档处理进度服务接口
  * 用于追踪和推送文档处理的实时进度
  */
 public interface DocumentProgressService {
+
+    /**
+     * 注册SSE发射器
+     * @param docId 文档ID
+     * @return SseEmitter
+     */
+    SseEmitter registerEmitter(Long docId);
 
     /**
      * 发送进度更新
