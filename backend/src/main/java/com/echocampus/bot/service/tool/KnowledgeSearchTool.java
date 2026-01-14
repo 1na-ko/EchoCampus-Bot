@@ -5,7 +5,7 @@ import com.echocampus.bot.entity.KnowledgeDoc;
 import com.echocampus.bot.mapper.KnowledgeChunkMapper;
 import com.echocampus.bot.mapper.KnowledgeDocMapper;
 import com.echocampus.bot.service.EmbeddingService;
-import com.echocampus.bot.service.MilvusService;
+import com.echocampus.bot.service.VectorService;
 import dev.langchain4j.agent.tool.Tool;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 public class KnowledgeSearchTool {
 
     private final EmbeddingService embeddingService;
-    private final MilvusService milvusService;
+    private final VectorService vectorService;
     private final KnowledgeChunkMapper chunkMapper;
     private final KnowledgeDocMapper docMapper;
 
@@ -54,9 +54,9 @@ public class KnowledgeSearchTool {
                 return "知识库检索失败：无法向量化查询内容";
             }
 
-            // 2. 在Milvus中搜索相似向量
-            List<MilvusService.SearchResult> searchResults = 
-                    milvusService.search(queryVector, defaultTopK, similarityThreshold);
+            // 2. 在向量数据库中搜索相似向量
+            List<VectorService.SearchResult> searchResults = 
+                    vectorService.search(queryVector, defaultTopK, similarityThreshold);
 
             if (searchResults.isEmpty()) {
                 log.info("未找到相关知识片段: query={}", query);
@@ -65,7 +65,7 @@ public class KnowledgeSearchTool {
 
             // 3. 根据chunkId获取完整的知识片段
             List<Long> chunkIds = searchResults.stream()
-                    .map(MilvusService.SearchResult::getChunkId)
+                    .map(VectorService.SearchResult::getChunkId)
                     .collect(Collectors.toList());
 
             List<KnowledgeChunk> chunks = chunkMapper.selectBatchIds(chunkIds);
@@ -73,8 +73,8 @@ public class KnowledgeSearchTool {
             // 4. 按搜索结果的顺序排序
             Map<Long, Float> scoreMap = searchResults.stream()
                     .collect(Collectors.toMap(
-                            MilvusService.SearchResult::getChunkId,
-                            MilvusService.SearchResult::getScore
+                            VectorService.SearchResult::getChunkId,
+                            VectorService.SearchResult::getScore
                     ));
             
             chunks.sort((a, b) -> {

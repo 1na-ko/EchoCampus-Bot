@@ -1,0 +1,122 @@
+# ==========================================
+# 生产环境 - Docker Compose 配置 (pgvector版)
+# 基于PostgreSQL+pgvector的简化架构，移除Milvus依赖
+# 使用方式：docker-compose -f docker-compose.pgvector.yml up -d
+# ==========================================
+
+version: '3.8'
+
+services:
+  # PostgreSQL数据库（含pgvector扩展）
+  postgres:
+    container_name: echocampus-postgres
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-echocampus}
+      POSTGRES_USER: ${POSTGRES_USER:-echocampus}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-echocampus123}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-pgvector.sql:/docker-entrypoint-initdb.d/init-pgvector.sql:ro
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-echocampus} -d ${POSTGRES_DB:-echocampus}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - echocampus-network
+    restart: unless-stopped
+    # 针对向量搜索优化的PostgreSQL配置
+    command: >
+      postgres
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=256MB
+      -c work_mem=64MB
+      -c max_parallel_workers_per_gather=2
+      -c max_parallel_workers=4
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+
+  # 后端服务
+  echocampus-bot:
+    container_name: echocampus-bot
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: ${DOCKER_IMAGE:-echocampus-bot:latest}
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-echocampus}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-echocampus}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-echocampus123}
+      # 向量存储配置 - 使用pgvector
+      VECTOR_PROVIDER: pgvector
+      # AI服务配置
+      ALIYUN_API_KEY: ${ALIYUN_API_KEY}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      DOCUMENT_UPLOAD_PATH: /app/uploads
+      # 邮件服务配置
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3100,http://localhost:5173}
+    volumes:
+      - uploads_data:/app/uploads
+      - logs_data:/app/logs
+    ports:
+      - "${BACKEND_PORT:-8083}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - echocampus-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # 前端服务（可选）
+  frontend:
+    container_name: echocampus-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+    image: echocampus-frontend:latest
+    ports:
+      - "${FRONTEND_PORT:-3100}:80"
+    depends_on:
+      - echocampus-bot
+    networks:
+      - echocampus-network
+    restart: unless-stopped
+    profiles:
+      - with-frontend
+
+networks:
+  echocampus-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  uploads_data:
+    driver: local
+  logs_data:
+    driver: local
