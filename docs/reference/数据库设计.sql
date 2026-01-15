@@ -251,12 +251,15 @@ CREATE TABLE operation_logs (
     operation_desc TEXT,
     resource_type VARCHAR(50),  -- USER, DOC, CHUNK, CONFIG
     resource_id BIGINT,
-    ip_address INET,
+    ip_address VARCHAR(100),  -- 支持代理情况下的多IP
     user_agent TEXT,
-    request_params JSONB,
-    response_result JSONB,
+    request_method VARCHAR(10),  -- HTTP请求方法：GET, POST, PUT, DELETE
+    request_url VARCHAR(500),  -- 请求URL路径
+    request_params TEXT,  -- JSON格式的请求参数
+    response_result TEXT,  -- JSON格式的响应结果
     status VARCHAR(20) DEFAULT 'SUCCESS',  -- SUCCESS, FAILED
     error_message TEXT,
+    execution_time BIGINT,  -- 执行耗时（毫秒）
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -1,6 +1,10 @@
 FROM eclipse-temurin:17-jre-alpine
 
-RUN apk add --no-cache curl
+# 设置北京时区
+ENV TZ=Asia/Shanghai
+RUN apk add --no-cache curl tzdata && \
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
+    echo $TZ > /etc/timezone
 
 RUN addgroup -S spring && adduser -S spring -G spring
 
