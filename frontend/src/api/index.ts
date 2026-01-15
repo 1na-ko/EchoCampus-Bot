@@ -49,7 +49,7 @@ export const authApi = {
   },
 
   // 更新用户信息
-  updateProfile(data: Partial<User>) {
+  updateProfile(data: { nickname?: string; email?: string; emailVerificationCode?: string }) {
     return request.put<void>('/v1/user/profile', data)
   },
 

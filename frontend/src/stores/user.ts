@@ -112,16 +112,23 @@ export const useUserStore = defineStore('user', {
     },
 
     // 更新用户信息
-    async updateProfile(userData: Partial<User>) {
+    async updateProfile(userData: { nickname?: string; email?: string; emailVerificationCode?: string }) {
       try {
         await authApi.updateProfile(userData)
         if (this.user) {
-          this.user = { ...this.user, ...userData }
+          // 只更新昵称和邮箱
+          if (userData.nickname) {
+            this.user.nickname = userData.nickname
+          }
+          if (userData.email) {
+            this.user.email = userData.email
+          }
         }
-        message.success('更新成功')
         return true
-      } catch (error) {
+      } catch (error: any) {
         console.error('Update profile error:', error)
+        const errorMsg = error?.response?.data?.message || '更新失败'
+        message.error(errorMsg)
         return false
       }
     },

@@ -85,6 +85,36 @@
                         />
                      </a-form-item>
                      
+                     <!-- 修改邮箱时显示验证码输入框 -->
+                     <a-form-item 
+                        v-if="isEditing && isEmailChanged" 
+                        label="新邮箱验证码" 
+                        class="form-item email-code-item"
+                     >
+                        <div style="display: flex; gap: 8px;">
+                           <a-input
+                              v-model:value="emailVerificationCode"
+                              placeholder="6位验证码"
+                              class="glass-input"
+                              :bordered="false"
+                              style="flex: 1;"
+                              :maxlength="6"
+                           />
+                           <a-button
+                              class="glass-input"
+                              :disabled="emailCodeCountdown > 0 || !formData.email"
+                              :loading="sendingEmailCode"
+                              @click="handleSendEmailCode"
+                              style="width: 120px; font-size: 13px; color: var(--primary-color); font-weight: 500;"
+                           >
+                              {{ emailCodeCountdown > 0 ? `${emailCodeCountdown}s` : '发送验证码' }}
+                           </a-button>
+                        </div>
+                        <div class="email-change-hint">
+                           修改邮箱需要验证新邮箱的所有权
+                        </div>
+                     </a-form-item>
+                     
                      <a-form-item label="注册时间" class="form-item">
                         <div class="readonly-field">
                            {{ dayjs(formData.createdAt).format('YYYY年MM月DD日') }}
@@ -213,6 +243,18 @@ const sendingCode = ref(false)
 const countdown = ref(0)
 let countdownTimer: number | null = null
 
+// 邮箱修改相关状态
+const originalEmail = ref('')
+const emailVerificationCode = ref('')
+const sendingEmailCode = ref(false)
+const emailCodeCountdown = ref(0)
+let emailCodeTimer: number | null = null
+
+// 计算属性：判断邮箱是否已修改
+const isEmailChanged = computed(() => {
+  return formData.email && formData.email !== originalEmail.value
+})
+
 const formData = reactive({
   username: '',
   nickname: '',
@@ -262,18 +304,38 @@ const loadUserData = () => {
       status: userStore.user.status,
       createdAt: userStore.user.createdAt,
     })
+    // 保存原始邮箱用于比较
+    originalEmail.value = userStore.user.email || ''
   }
 }
 
 const handleSave = async () => {
+  // 如果邮箱已修改，检查是否填写了验证码
+  if (isEmailChanged.value && !emailVerificationCode.value) {
+    message.error('请输入新邮箱的验证码')
+    return
+  }
+  
   saving.value = true
   try {
-    const success = await userStore.updateProfile({
+    const updateData: any = {
       nickname: formData.nickname,
-      email: formData.email,
-    })
+    }
+    
+    // 只有邮箱变化时才传递邮箱和验证码
+    if (isEmailChanged.value) {
+      updateData.email = formData.email
+      updateData.emailVerificationCode = emailVerificationCode.value
+    }
+    
+    const success = await userStore.updateProfile(updateData)
     if (success) {
       isEditing.value = false
+      // 更新原始邮箱
+      originalEmail.value = formData.email
+      // 清空验证码
+      emailVerificationCode.value = ''
+      stopEmailCodeCountdown()
       message.success('个人信息更新成功')
     }
   } finally {
@@ -283,18 +345,63 @@ const handleSave = async () => {
 
 const cancelEdit = () => {
   isEditing.value = false
+  emailVerificationCode.value = ''
+  stopEmailCodeCountdown()
   loadUserData()
 }
 
-const handleSendCode = async () => {
+// 发送新邮箱验证码
+const handleSendEmailCode = async () => {
   if (!formData.email) {
+    message.warning('请输入新邮箱')
+    return
+  }
+  
+  // 简单的邮箱格式校验
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(formData.email)) {
+    message.error('请输入有效的邮箱地址')
+    return
+  }
+  
+  sendingEmailCode.value = true
+  try {
+    const success = await userStore.sendVerificationCode(formData.email, 'CHANGE_EMAIL')
+    if (success) {
+      startEmailCodeCountdown()
+    }
+  } finally {
+    sendingEmailCode.value = false
+  }
+}
+
+const startEmailCodeCountdown = () => {
+  emailCodeCountdown.value = 60
+  emailCodeTimer = window.setInterval(() => {
+    emailCodeCountdown.value--
+    if (emailCodeCountdown.value <= 0) {
+      stopEmailCodeCountdown()
+    }
+  }, 1000)
+}
+
+const stopEmailCodeCountdown = () => {
+  if (emailCodeTimer) {
+    clearInterval(emailCodeTimer)
+    emailCodeTimer = null
+  }
+  emailCodeCountdown.value = 0
+}
+
+const handleSendCode = async () => {
+  if (!originalEmail.value) {
     message.warning('请先绑定邮箱')
     return
   }
   
   sendingCode.value = true
   try {
-    const success = await userStore.sendVerificationCode(formData.email, 'CHANGE_PASSWORD')
+    const success = await userStore.sendVerificationCode(originalEmail.value, 'CHANGE_PASSWORD')
     if (success) {
       startCountdown()
     }
@@ -355,6 +462,7 @@ const handleChangePassword = async () => {
 
 onUnmounted(() => {
   stopCountdown()
+  stopEmailCodeCountdown()
 })
 
 onMounted(async () => {
@@ -704,6 +812,25 @@ onMounted(async () => {
 .save-btn {
   border-radius: 8px;
   font-weight: 600;
+}
+
+/* Email verification */
+.email-code-item {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.email-change-hint {
+  font-size: 12px;
+  color: #f59e0b;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.email-change-hint::before {
+  content: '⚠️';
 }
 
 /* Responsive */
