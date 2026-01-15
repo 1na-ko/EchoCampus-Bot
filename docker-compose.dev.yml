@@ -15,6 +15,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
       PGDATA: /var/lib/postgresql/data/pgdata
+      TZ: Asia/Shanghai
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docs/数据库设计.sql:/docker-entrypoint-initdb.d/init.sql
@@ -121,6 +122,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
+      TZ: Asia/Shanghai
       SPRING_PROFILES_ACTIVE: dev
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-echocampus_bot}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
