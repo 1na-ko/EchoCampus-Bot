@@ -3,6 +3,7 @@ package com.echocampus.bot.service.impl;
 import com.echocampus.bot.common.ResultCode;
 import com.echocampus.bot.common.exception.BusinessException;
 import com.echocampus.bot.dto.request.LoginRequest;
+import com.echocampus.bot.dto.request.UpdateProfileRequest;
 import com.echocampus.bot.dto.response.LoginResponse;
 import com.echocampus.bot.entity.User;
 import com.echocampus.bot.mapper.UserMapper;
@@ -15,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 
@@ -129,6 +131,56 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void updateUser(User user) {
+        userMapper.updateById(user);
+    }
+
+    /**
+     * 更新用户个人资料
+     * 如果修改邮箱，需要验证新邮箱的验证码以确保用户对新邮箱的所有权
+     *
+     * @param userId  用户ID
+     * @param request 更新请求
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateProfile(Long userId, UpdateProfileRequest request) {
+        User user = getUserById(userId);
+        
+        // 检查是否修改了邮箱
+        boolean emailChanged = StringUtils.hasText(request.getEmail()) 
+                && !request.getEmail().equals(user.getEmail());
+        
+        if (emailChanged) {
+            // 检查新邮箱是否已被其他用户使用
+            User existingUser = userMapper.selectByEmail(request.getEmail());
+            if (existingUser != null && !existingUser.getId().equals(userId)) {
+                throw new BusinessException(ResultCode.USER_ALREADY_EXISTS, "该邮箱已被其他用户绑定");
+            }
+            
+            // 修改邮箱必须提供验证码
+            if (!StringUtils.hasText(request.getEmailVerificationCode())) {
+                throw new BusinessException(ResultCode.VALIDATION_ERROR, "修改邮箱需要提供验证码");
+            }
+            
+            // 验证新邮箱的验证码
+            if (!verificationCodeService.verifyCode(request.getEmail(), request.getEmailVerificationCode(), "CHANGE_EMAIL")) {
+                throw new BusinessException(ResultCode.VERIFICATION_CODE_INVALID, "邮箱验证码无效或已过期");
+            }
+            
+            // 更新邮箱
+            user.setEmail(request.getEmail());
+            
+            // 标记验证码为已使用
+            verificationCodeService.markCodeAsUsed(request.getEmail(), request.getEmailVerificationCode(), "CHANGE_EMAIL");
+            
+            log.info("用户邮箱修改成功: userId={}, newEmail={}", userId, request.getEmail());
+        }
+        
+        // 更新昵称（如果提供）
+        if (StringUtils.hasText(request.getNickname())) {
+            user.setNickname(request.getNickname());
+        }
+        
         userMapper.updateById(user);
     }
 

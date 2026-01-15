@@ -5,6 +5,7 @@ import com.echocampus.bot.common.Result;
 import com.echocampus.bot.dto.request.LoginRequest;
 import com.echocampus.bot.dto.request.RegisterWithCodeRequest;
 import com.echocampus.bot.dto.request.SendVerificationCodeRequest;
+import com.echocampus.bot.dto.request.UpdateProfileRequest;
 import com.echocampus.bot.dto.response.LoginResponse;
 import com.echocampus.bot.entity.OperationLog;
 import com.echocampus.bot.entity.User;
@@ -99,20 +100,16 @@ public class UserController {
         return Result.success(user);
     }
 
-    @Operation(summary = "更新用户信息", description = "更新当前用户的个人信息")
+    @Operation(summary = "更新用户信息", description = "更新当前用户的个人信息，修改邮箱需要提供新邮箱的验证码")
     @PutMapping("/user/profile")
     @OpLog(
             operationType = OperationLog.OperationType.UPDATE,
             resourceType = OperationLog.ResourceType.USER,
             description = "更新用户信息"
     )
-    public Result<Void> updateProfile(HttpServletRequest request, @RequestBody User user) {
+    public Result<Void> updateProfile(HttpServletRequest request, @Valid @RequestBody UpdateProfileRequest updateRequest) {
         Long userId = (Long) request.getAttribute("userId");
-        user.setId(userId);
-        // 不允许通过此接口修改密码和角色
-        user.setPassword(null);
-        user.setRole(null);
-        userService.updateUser(user);
+        userService.updateProfile(userId, updateRequest);
         return Result.success();
     }
 
