@@ -1,11 +1,13 @@
 package com.echocampus.bot.controller;
 
+import com.echocampus.bot.annotation.OpLog;
 import com.echocampus.bot.common.PageResult;
 import com.echocampus.bot.common.Result;
 import com.echocampus.bot.dto.request.KnowledgeDocRequest;
 import com.echocampus.bot.dto.response.DocumentProgressDTO;
 import com.echocampus.bot.entity.KnowledgeCategory;
 import com.echocampus.bot.entity.KnowledgeDoc;
+import com.echocampus.bot.entity.OperationLog;
 import com.echocampus.bot.service.DocumentProgressService;
 import com.echocampus.bot.service.KnowledgeService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,6 +37,11 @@ public class KnowledgeController {
 
     @Operation(summary = "上传文档", description = "上传知识库文档")
     @PostMapping("/docs")
+    @OpLog(
+            operationType = OperationLog.OperationType.UPLOAD,
+            resourceType = OperationLog.ResourceType.DOC,
+            description = "上传知识库文档"
+    )
     public Result<KnowledgeDoc> uploadDocument(HttpServletRequest request,
             @Parameter(description = "文件") @RequestParam("file") MultipartFile file,
             @Parameter(description = "文档标题") @RequestParam String title,
@@ -56,6 +63,12 @@ public class KnowledgeController {
 
     @Operation(summary = "获取文档列表", description = "分页查询知识库文档")
     @GetMapping("/docs")
+    @OpLog(
+            operationType = OperationLog.OperationType.QUERY,
+            resourceType = OperationLog.ResourceType.DOC,
+            description = "查询知识库文档列表",
+            saveResponseResult = false
+    )
     public Result<PageResult<KnowledgeDoc>> getDocuments(HttpServletRequest request,
             @Parameter(description = "分类") @RequestParam(required = false) String category,
             @Parameter(description = "状态") @RequestParam(required = false) String status,
@@ -68,6 +81,11 @@ public class KnowledgeController {
 
     @Operation(summary = "获取文档详情", description = "获取指定文档的详细信息")
     @GetMapping("/docs/{docId}")
+    @OpLog(
+            operationType = OperationLog.OperationType.QUERY,
+            resourceType = OperationLog.ResourceType.DOC,
+            description = "获取文档详情"
+    )
     public Result<KnowledgeDoc> getDocument(HttpServletRequest request, @Parameter(description = "文档ID") @PathVariable Long docId) {
         KnowledgeDoc doc = knowledgeService.getDocumentById(docId);
         return Result.success(doc);
@@ -75,6 +93,11 @@ public class KnowledgeController {
 
     @Operation(summary = "更新文档", description = "更新文档信息")
     @PutMapping("/docs/{docId}")
+    @OpLog(
+            operationType = OperationLog.OperationType.UPDATE,
+            resourceType = OperationLog.ResourceType.DOC,
+            description = "更新文档信息"
+    )
     public Result<Void> updateDocument(HttpServletRequest request,
             @Parameter(description = "文档ID") @PathVariable Long docId,
             @Valid @RequestBody KnowledgeDocRequest knowledgeDocRequest) {
@@ -84,6 +107,11 @@ public class KnowledgeController {
 
     @Operation(summary = "删除文档", description = "删除指定文档")
     @DeleteMapping("/docs/{docId}")
+    @OpLog(
+            operationType = OperationLog.OperationType.DELETE,
+            resourceType = OperationLog.ResourceType.DOC,
+            description = "删除知识库文档"
+    )
     public Result<Void> deleteDocument(HttpServletRequest request, @Parameter(description = "文档ID") @PathVariable Long docId) {
         knowledgeService.deleteDocument(docId);
         return Result.success();
@@ -91,6 +119,11 @@ public class KnowledgeController {
 
     @Operation(summary = "重新索引文档", description = "重新解析并索引文档")
     @PostMapping("/docs/{docId}/reindex")
+    @OpLog(
+            operationType = OperationLog.OperationType.UPDATE,
+            resourceType = OperationLog.ResourceType.DOC,
+            description = "重新索引文档"
+    )
     public Result<Void> reindexDocument(HttpServletRequest request, @Parameter(description = "文档ID") @PathVariable Long docId) {
         knowledgeService.reindexDocument(docId);
         return Result.success();
@@ -98,6 +131,12 @@ public class KnowledgeController {
 
     @Operation(summary = "获取分类列表", description = "获取所有知识分类")
     @GetMapping("/categories")
+    @OpLog(
+            operationType = OperationLog.OperationType.QUERY,
+            resourceType = OperationLog.ResourceType.CATEGORY,
+            description = "获取知识库分类列表",
+            saveResponseResult = false
+    )
     public Result<List<KnowledgeCategory>> getCategories(HttpServletRequest request) {
         List<KnowledgeCategory> categories = knowledgeService.getCategories();
         return Result.success(categories);

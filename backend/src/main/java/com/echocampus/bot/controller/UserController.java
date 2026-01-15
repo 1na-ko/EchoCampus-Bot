@@ -1,10 +1,12 @@
 package com.echocampus.bot.controller;
 
+import com.echocampus.bot.annotation.OpLog;
 import com.echocampus.bot.common.Result;
 import com.echocampus.bot.dto.request.LoginRequest;
 import com.echocampus.bot.dto.request.RegisterWithCodeRequest;
 import com.echocampus.bot.dto.request.SendVerificationCodeRequest;
 import com.echocampus.bot.dto.response.LoginResponse;
+import com.echocampus.bot.entity.OperationLog;
 import com.echocampus.bot.entity.User;
 import com.echocampus.bot.service.UserService;
 import com.echocampus.bot.service.VerificationCodeService;
@@ -27,6 +29,12 @@ public class UserController {
 
     @Operation(summary = "用户登录", description = "用户登录并获取Token")
     @PostMapping("/auth/login")
+    @OpLog(
+            operationType = OperationLog.OperationType.LOGIN,
+            resourceType = OperationLog.ResourceType.USER,
+            description = "用户登录",
+            saveRequestParams = false
+    )
     public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = userService.login(request);
         return Result.success("登录成功", response);
@@ -34,6 +42,11 @@ public class UserController {
 
     @Operation(summary = "用户注册", description = "新用户注册")
     @PostMapping("/auth/register")
+    @OpLog(
+            operationType = OperationLog.OperationType.REGISTER,
+            resourceType = OperationLog.ResourceType.USER,
+            description = "用户注册"
+    )
     public Result<User> register(@Valid @RequestBody User user) {
         User registeredUser = userService.register(user);
         registeredUser.setPassword(null);
@@ -42,6 +55,11 @@ public class UserController {
 
     @Operation(summary = "发送验证码", description = "发送邮箱验证码")
     @PostMapping("/auth/send-verification-code")
+    @OpLog(
+            operationType = OperationLog.OperationType.SEND_CODE,
+            resourceType = OperationLog.ResourceType.VERIFICATION_CODE,
+            description = "发送邮箱验证码"
+    )
     public Result<Void> sendVerificationCode(@Valid @RequestBody SendVerificationCodeRequest request, HttpServletRequest httpRequest) {
         String ipAddress = getClientIp(httpRequest);
         verificationCodeService.sendVerificationCode(request.getEmail(), request.getType(), ipAddress);
@@ -50,6 +68,11 @@ public class UserController {
 
     @Operation(summary = "用户注册（带验证码）", description = "使用邮箱验证码注册新用户")
     @PostMapping("/auth/register-with-code")
+    @OpLog(
+            operationType = OperationLog.OperationType.REGISTER,
+            resourceType = OperationLog.ResourceType.USER,
+            description = "用户注册（带验证码）"
+    )
     public Result<User> registerWithCode(@Valid @RequestBody RegisterWithCodeRequest request) {
         User registeredUser = userService.registerWithVerificationCode(
                 request.getUsername(),
@@ -64,6 +87,11 @@ public class UserController {
 
     @Operation(summary = "获取当前用户信息", description = "获取当前登录用户的信息")
     @GetMapping("/user/profile")
+    @OpLog(
+            operationType = OperationLog.OperationType.QUERY,
+            resourceType = OperationLog.ResourceType.USER,
+            description = "获取当前用户信息"
+    )
     public Result<User> getCurrentUser(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         User user = userService.getUserById(userId);
@@ -73,6 +101,11 @@ public class UserController {
 
     @Operation(summary = "更新用户信息", description = "更新当前用户的个人信息")
     @PutMapping("/user/profile")
+    @OpLog(
+            operationType = OperationLog.OperationType.UPDATE,
+            resourceType = OperationLog.ResourceType.USER,
+            description = "更新用户信息"
+    )
     public Result<Void> updateProfile(HttpServletRequest request, @RequestBody User user) {
         Long userId = (Long) request.getAttribute("userId");
         user.setId(userId);
@@ -85,6 +118,12 @@ public class UserController {
 
     @Operation(summary = "修改密码", description = "修改用户密码")
     @PutMapping("/user/password")
+    @OpLog(
+            operationType = OperationLog.OperationType.CHANGE_PASSWORD,
+            resourceType = OperationLog.ResourceType.USER,
+            description = "修改密码",
+            saveRequestParams = false
+    )
     public Result<Void> changePassword(HttpServletRequest request,
             @Parameter(description = "旧密码") @RequestParam String oldPassword,
             @Parameter(description = "新密码") @RequestParam String newPassword,
