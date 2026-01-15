@@ -85,15 +85,15 @@
                         />
                      </a-form-item>
                      
-                     <!-- 修改邮箱时显示验证码输入框 -->
+                     <!-- 修改邮箱时显示旧邮箱验证码输入框 -->
                      <a-form-item 
                         v-if="isEditing && isEmailChanged" 
-                        label="新邮箱验证码" 
+                        label="原邮箱验证码" 
                         class="form-item email-code-item"
                      >
                         <div style="display: flex; gap: 8px;">
                            <a-input
-                              v-model:value="emailVerificationCode"
+                              v-model:value="oldEmailVerificationCode"
                               placeholder="6位验证码"
                               class="glass-input"
                               :bordered="false"
@@ -102,16 +102,46 @@
                            />
                            <a-button
                               class="glass-input"
-                              :disabled="emailCodeCountdown > 0 || !formData.email"
-                              :loading="sendingEmailCode"
-                              @click="handleSendEmailCode"
+                              :disabled="oldEmailCodeCountdown > 0 || !originalEmail"
+                              :loading="sendingOldEmailCode"
+                              @click="handleSendOldEmailCode"
                               style="width: 120px; font-size: 13px; color: var(--primary-color); font-weight: 500;"
                            >
-                              {{ emailCodeCountdown > 0 ? `${emailCodeCountdown}s` : '发送验证码' }}
+                              {{ oldEmailCodeCountdown > 0 ? `${oldEmailCodeCountdown}s` : '发送验证码' }}
                            </a-button>
                         </div>
-                        <div class="email-change-hint">
-                           修改邮箱需要验证新邮箱的所有权
+                        <div class="email-change-hint old-email-hint">
+                           验证您对原邮箱 {{ originalEmail }} 的所有权
+                        </div>
+                     </a-form-item>
+                     
+                     <!-- 修改邮箱时显示新邮箱验证码输入框 -->
+                     <a-form-item 
+                        v-if="isEditing && isEmailChanged" 
+                        label="新邮箱验证码" 
+                        class="form-item email-code-item"
+                     >
+                        <div style="display: flex; gap: 8px;">
+                           <a-input
+                              v-model:value="newEmailVerificationCode"
+                              placeholder="6位验证码"
+                              class="glass-input"
+                              :bordered="false"
+                              style="flex: 1;"
+                              :maxlength="6"
+                           />
+                           <a-button
+                              class="glass-input"
+                              :disabled="newEmailCodeCountdown > 0 || !formData.email"
+                              :loading="sendingNewEmailCode"
+                              @click="handleSendNewEmailCode"
+                              style="width: 120px; font-size: 13px; color: var(--primary-color); font-weight: 500;"
+                           >
+                              {{ newEmailCodeCountdown > 0 ? `${newEmailCodeCountdown}s` : '发送验证码' }}
+                           </a-button>
+                        </div>
+                        <div class="email-change-hint new-email-hint">
+                           验证您对新邮箱 {{ formData.email }} 的所有权
                         </div>
                      </a-form-item>
                      
@@ -243,12 +273,16 @@ const sendingCode = ref(false)
 const countdown = ref(0)
 let countdownTimer: number | null = null
 
-// 邮箱修改相关状态
+// 邮箱修改相关状态 - 新旧邮箱都需要验证
 const originalEmail = ref('')
-const emailVerificationCode = ref('')
-const sendingEmailCode = ref(false)
-const emailCodeCountdown = ref(0)
-let emailCodeTimer: number | null = null
+const oldEmailVerificationCode = ref('')
+const newEmailVerificationCode = ref('')
+const sendingOldEmailCode = ref(false)
+const sendingNewEmailCode = ref(false)
+const oldEmailCodeCountdown = ref(0)
+const newEmailCodeCountdown = ref(0)
+let oldEmailCodeTimer: number | null = null
+let newEmailCodeTimer: number | null = null
 
 // 计算属性：判断邮箱是否已修改
 const isEmailChanged = computed(() => {
@@ -310,10 +344,16 @@ const loadUserData = () => {
 }
 
 const handleSave = async () => {
-  // 如果邮箱已修改，检查是否填写了验证码
-  if (isEmailChanged.value && !emailVerificationCode.value) {
-    message.error('请输入新邮箱的验证码')
-    return
+  // 如果邮箱已修改，检查是否填写了两个验证码
+  if (isEmailChanged.value) {
+    if (!oldEmailVerificationCode.value) {
+      message.error('请输入原邮箱的验证码')
+      return
+    }
+    if (!newEmailVerificationCode.value) {
+      message.error('请输入新邮箱的验证码')
+      return
+    }
   }
   
   saving.value = true
@@ -325,7 +365,8 @@ const handleSave = async () => {
     // 只有邮箱变化时才传递邮箱和验证码
     if (isEmailChanged.value) {
       updateData.email = formData.email
-      updateData.emailVerificationCode = emailVerificationCode.value
+      updateData.oldEmailVerificationCode = oldEmailVerificationCode.value
+      updateData.newEmailVerificationCode = newEmailVerificationCode.value
     }
     
     const success = await userStore.updateProfile(updateData)
@@ -334,8 +375,10 @@ const handleSave = async () => {
       // 更新原始邮箱
       originalEmail.value = formData.email
       // 清空验证码
-      emailVerificationCode.value = ''
-      stopEmailCodeCountdown()
+      oldEmailVerificationCode.value = ''
+      newEmailVerificationCode.value = ''
+      stopOldEmailCodeCountdown()
+      stopNewEmailCodeCountdown()
       message.success('个人信息更新成功')
     }
   } finally {
@@ -345,13 +388,33 @@ const handleSave = async () => {
 
 const cancelEdit = () => {
   isEditing.value = false
-  emailVerificationCode.value = ''
-  stopEmailCodeCountdown()
+  oldEmailVerificationCode.value = ''
+  newEmailVerificationCode.value = ''
+  stopOldEmailCodeCountdown()
+  stopNewEmailCodeCountdown()
   loadUserData()
 }
 
+// 发送原邮箱验证码
+const handleSendOldEmailCode = async () => {
+  if (!originalEmail.value) {
+    message.warning('原邮箱不存在')
+    return
+  }
+  
+  sendingOldEmailCode.value = true
+  try {
+    const success = await userStore.sendVerificationCode(originalEmail.value, 'CHANGE_EMAIL')
+    if (success) {
+      startOldEmailCodeCountdown()
+    }
+  } finally {
+    sendingOldEmailCode.value = false
+  }
+}
+
 // 发送新邮箱验证码
-const handleSendEmailCode = async () => {
+const handleSendNewEmailCode = async () => {
   if (!formData.email) {
     message.warning('请输入新邮箱')
     return
@@ -364,33 +427,51 @@ const handleSendEmailCode = async () => {
     return
   }
   
-  sendingEmailCode.value = true
+  sendingNewEmailCode.value = true
   try {
     const success = await userStore.sendVerificationCode(formData.email, 'CHANGE_EMAIL')
     if (success) {
-      startEmailCodeCountdown()
+      startNewEmailCodeCountdown()
     }
   } finally {
-    sendingEmailCode.value = false
+    sendingNewEmailCode.value = false
   }
 }
 
-const startEmailCodeCountdown = () => {
-  emailCodeCountdown.value = 60
-  emailCodeTimer = window.setInterval(() => {
-    emailCodeCountdown.value--
-    if (emailCodeCountdown.value <= 0) {
-      stopEmailCodeCountdown()
+const startOldEmailCodeCountdown = () => {
+  oldEmailCodeCountdown.value = 60
+  oldEmailCodeTimer = window.setInterval(() => {
+    oldEmailCodeCountdown.value--
+    if (oldEmailCodeCountdown.value <= 0) {
+      stopOldEmailCodeCountdown()
     }
   }, 1000)
 }
 
-const stopEmailCodeCountdown = () => {
-  if (emailCodeTimer) {
-    clearInterval(emailCodeTimer)
-    emailCodeTimer = null
+const stopOldEmailCodeCountdown = () => {
+  if (oldEmailCodeTimer) {
+    clearInterval(oldEmailCodeTimer)
+    oldEmailCodeTimer = null
   }
-  emailCodeCountdown.value = 0
+  oldEmailCodeCountdown.value = 0
+}
+
+const startNewEmailCodeCountdown = () => {
+  newEmailCodeCountdown.value = 60
+  newEmailCodeTimer = window.setInterval(() => {
+    newEmailCodeCountdown.value--
+    if (newEmailCodeCountdown.value <= 0) {
+      stopNewEmailCodeCountdown()
+    }
+  }, 1000)
+}
+
+const stopNewEmailCodeCountdown = () => {
+  if (newEmailCodeTimer) {
+    clearInterval(newEmailCodeTimer)
+    newEmailCodeTimer = null
+  }
+  newEmailCodeCountdown.value = 0
 }
 
 const handleSendCode = async () => {
@@ -462,7 +543,8 @@ const handleChangePassword = async () => {
 
 onUnmounted(() => {
   stopCountdown()
-  stopEmailCodeCountdown()
+  stopOldEmailCodeCountdown()
+  stopNewEmailCodeCountdown()
 })
 
 onMounted(async () => {
@@ -823,14 +905,19 @@ onMounted(async () => {
 .email-change-hint {
   font-size: 12px;
   color: #f59e0b;
-  margin-bottom: 8px;
+  margin-top: 6px;
+  margin-bottom: 0;
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
-.email-change-hint::before {
-  content: '⚠️';
+.email-change-hint.old-email-hint::before {
+  content: '🔐';
+}
+
+.email-change-hint.new-email-hint::before {
+  content: '📧';
 }
 
 /* Responsive */
