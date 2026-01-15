@@ -49,7 +49,12 @@ export const authApi = {
   },
 
   // 更新用户信息
-  updateProfile(data: { nickname?: string; email?: string; emailVerificationCode?: string }) {
+  updateProfile(data: { 
+    nickname?: string; 
+    email?: string; 
+    oldEmailVerificationCode?: string;
+    newEmailVerificationCode?: string;
+  }) {
     return request.put<void>('/v1/user/profile', data)
   },
 
