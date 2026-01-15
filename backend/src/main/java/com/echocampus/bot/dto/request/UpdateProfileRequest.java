@@ -38,10 +38,18 @@ public class UpdateProfileRequest {
     private String email;
 
     /**
-     * 邮箱验证码
+     * 旧邮箱验证码
+     * 当修改邮箱时必填，用于验证用户对原邮箱的所有权（防止账号被盗后邮箱被恶意更改）
+     */
+    @Schema(description = "旧邮箱验证码（修改邮箱时必填）", example = "123456")
+    @Size(min = 6, max = 6, message = "验证码必须是6位")
+    private String oldEmailVerificationCode;
+
+    /**
+     * 新邮箱验证码
      * 当修改邮箱时必填，用于验证用户对新邮箱的所有权
      */
-    @Schema(description = "邮箱验证码（修改邮箱时必填）", example = "123456")
+    @Schema(description = "新邮箱验证码（修改邮箱时必填）", example = "654321")
     @Size(min = 6, max = 6, message = "验证码必须是6位")
-    private String emailVerificationCode;
+    private String newEmailVerificationCode;
 }

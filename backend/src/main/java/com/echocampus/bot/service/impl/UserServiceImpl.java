@@ -145,10 +145,11 @@ public class UserServiceImpl implements UserService {
     @Transactional(rollbackFor = Exception.class)
     public void updateProfile(Long userId, UpdateProfileRequest request) {
         User user = getUserById(userId);
+        String oldEmail = user.getEmail();
         
         // 检查是否修改了邮箱
         boolean emailChanged = StringUtils.hasText(request.getEmail()) 
-                && !request.getEmail().equals(user.getEmail());
+                && !request.getEmail().equals(oldEmail);
         
         if (emailChanged) {
             // 检查新邮箱是否已被其他用户使用
@@ -157,23 +158,34 @@ public class UserServiceImpl implements UserService {
                 throw new BusinessException(ResultCode.USER_ALREADY_EXISTS, "该邮箱已被其他用户绑定");
             }
             
-            // 修改邮箱必须提供验证码
-            if (!StringUtils.hasText(request.getEmailVerificationCode())) {
-                throw new BusinessException(ResultCode.VALIDATION_ERROR, "修改邮箱需要提供验证码");
+            // 修改邮箱必须提供旧邮箱验证码（防止账号被盗后邮箱被恶意更改）
+            if (!StringUtils.hasText(request.getOldEmailVerificationCode())) {
+                throw new BusinessException(ResultCode.VALIDATION_ERROR, "修改邮箱需要验证原邮箱");
             }
             
-            // 验证新邮箱的验证码
-            if (!verificationCodeService.verifyCode(request.getEmail(), request.getEmailVerificationCode(), "CHANGE_EMAIL")) {
-                throw new BusinessException(ResultCode.VERIFICATION_CODE_INVALID, "邮箱验证码无效或已过期");
+            // 修改邮箱必须提供新邮箱验证码
+            if (!StringUtils.hasText(request.getNewEmailVerificationCode())) {
+                throw new BusinessException(ResultCode.VALIDATION_ERROR, "修改邮箱需要验证新邮箱");
+            }
+            
+            // 验证旧邮箱的验证码（证明你是账号真正的主人）
+            if (!verificationCodeService.verifyCode(oldEmail, request.getOldEmailVerificationCode(), "CHANGE_EMAIL")) {
+                throw new BusinessException(ResultCode.VERIFICATION_CODE_INVALID, "原邮箱验证码无效或已过期");
+            }
+            
+            // 验证新邮箱的验证码（确认新邮箱是你的）
+            if (!verificationCodeService.verifyCode(request.getEmail(), request.getNewEmailVerificationCode(), "CHANGE_EMAIL")) {
+                throw new BusinessException(ResultCode.VERIFICATION_CODE_INVALID, "新邮箱验证码无效或已过期");
             }
             
             // 更新邮箱
             user.setEmail(request.getEmail());
             
-            // 标记验证码为已使用
-            verificationCodeService.markCodeAsUsed(request.getEmail(), request.getEmailVerificationCode(), "CHANGE_EMAIL");
+            // 标记两个验证码都为已使用
+            verificationCodeService.markCodeAsUsed(oldEmail, request.getOldEmailVerificationCode(), "CHANGE_EMAIL");
+            verificationCodeService.markCodeAsUsed(request.getEmail(), request.getNewEmailVerificationCode(), "CHANGE_EMAIL");
             
-            log.info("用户邮箱修改成功: userId={}, newEmail={}", userId, request.getEmail());
+            log.info("用户邮箱修改成功: userId={}, oldEmail={}, newEmail={}", userId, oldEmail, request.getEmail());
         }
         
         // 更新昵称（如果提供）

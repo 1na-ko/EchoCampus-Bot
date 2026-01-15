@@ -112,7 +112,12 @@ export const useUserStore = defineStore('user', {
     },
 
     // 更新用户信息
-    async updateProfile(userData: { nickname?: string; email?: string; emailVerificationCode?: string }) {
+    async updateProfile(userData: { 
+      nickname?: string; 
+      email?: string; 
+      oldEmailVerificationCode?: string;
+      newEmailVerificationCode?: string;
+    }) {
       try {
         await authApi.updateProfile(userData)
         if (this.user) {
