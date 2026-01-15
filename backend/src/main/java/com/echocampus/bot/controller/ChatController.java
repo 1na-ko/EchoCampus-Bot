@@ -1,5 +1,6 @@
 package com.echocampus.bot.controller;
 
+import com.echocampus.bot.annotation.OpLog;
 import com.echocampus.bot.common.Result;
 import com.echocampus.bot.common.ResultCode;
 import com.echocampus.bot.common.exception.BusinessException;
@@ -9,6 +10,7 @@ import com.echocampus.bot.dto.response.ChatResponse;
 import com.echocampus.bot.dto.response.StreamChatResponse;
 import com.echocampus.bot.entity.Conversation;
 import com.echocampus.bot.entity.Message;
+import com.echocampus.bot.entity.OperationLog;
 import com.echocampus.bot.service.ChatService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -43,6 +45,12 @@ public class ChatController {
 
     @Operation(summary = "发送消息", description = "发送消息并获取AI回复")
     @PostMapping("/message")
+    @OpLog(
+            operationType = OperationLog.OperationType.CHAT,
+            resourceType = OperationLog.ResourceType.MESSAGE,
+            description = "发送聊天消息",
+            saveResponseResult = false
+    )
     public Result<ChatResponse> sendMessage(HttpServletRequest request, @Valid @RequestBody ChatRequest chatRequest) {
         Long userId = (Long) request.getAttribute("userId");
         ChatResponse response = chatService.sendMessage(userId, chatRequest);
@@ -51,6 +59,12 @@ public class ChatController {
 
     @Operation(summary = "发送消息（流式）", description = "发送消息并获取流式AI回复")
     @PostMapping(value = "/message/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @OpLog(
+            operationType = OperationLog.OperationType.CHAT,
+            resourceType = OperationLog.ResourceType.MESSAGE,
+            description = "发送流式聊天消息",
+            saveResponseResult = false
+    )
     public SseEmitter sendMessageStream(HttpServletRequest request, @Valid @RequestBody ChatRequest chatRequest) {
         Long userId = (Long) request.getAttribute("userId");
         
@@ -111,6 +125,12 @@ public class ChatController {
 
     @Operation(summary = "获取会话列表", description = "获取用户的会话列表")
     @GetMapping("/conversations")
+    @OpLog(
+            operationType = OperationLog.OperationType.QUERY,
+            resourceType = OperationLog.ResourceType.CONVERSATION,
+            description = "获取会话列表",
+            saveResponseResult = false
+    )
     public Result<List<Conversation>> getConversations(HttpServletRequest request,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer size) {
@@ -121,6 +141,12 @@ public class ChatController {
 
     @Operation(summary = "获取会话消息", description = "获取指定会话的消息历史")
     @GetMapping("/conversations/{conversationId}/messages")
+    @OpLog(
+            operationType = OperationLog.OperationType.QUERY,
+            resourceType = OperationLog.ResourceType.MESSAGE,
+            description = "获取会话消息历史",
+            saveResponseResult = false
+    )
     public Result<List<Message>> getMessages(HttpServletRequest request, @Parameter(description = "会话ID") @PathVariable Long conversationId) {
         Long userId = (Long) request.getAttribute("userId");
         List<Message> messages = chatService.getMessages(conversationId);
@@ -129,6 +155,11 @@ public class ChatController {
 
     @Operation(summary = "创建新会话", description = "创建一个新的对话会话")
     @PostMapping("/conversations")
+    @OpLog(
+            operationType = OperationLog.OperationType.CREATE,
+            resourceType = OperationLog.ResourceType.CONVERSATION,
+            description = "创建新会话"
+    )
     public Result<Conversation> createConversation(HttpServletRequest request,
             @Parameter(description = "会话标题") @RequestParam(defaultValue = "新对话") String title) {
         Long userId = (Long) request.getAttribute("userId");
@@ -138,6 +169,11 @@ public class ChatController {
 
     @Operation(summary = "删除会话", description = "删除指定的对话会话")
     @DeleteMapping("/conversations/{conversationId}")
+    @OpLog(
+            operationType = OperationLog.OperationType.DELETE,
+            resourceType = OperationLog.ResourceType.CONVERSATION,
+            description = "删除会话"
+    )
     public Result<Void> deleteConversation(HttpServletRequest request, @Parameter(description = "会话ID") @PathVariable Long conversationId) {
         Long userId = (Long) request.getAttribute("userId");
         chatService.deleteConversation(conversationId);
@@ -146,6 +182,11 @@ public class ChatController {
 
     @Operation(summary = "更新会话标题", description = "更新对话会话的标题")
     @PutMapping("/conversations/{conversationId}")
+    @OpLog(
+            operationType = OperationLog.OperationType.UPDATE,
+            resourceType = OperationLog.ResourceType.CONVERSATION,
+            description = "更新会话标题"
+    )
     public Result<Void> updateConversationTitle(HttpServletRequest request,
             @Parameter(description = "会话ID") @PathVariable Long conversationId,
             @Parameter(description = "新标题") @RequestParam String title) {

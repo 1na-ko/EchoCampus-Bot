@@ -1,6 +1,8 @@
 package com.echocampus.bot.controller;
 
+import com.echocampus.bot.annotation.OpLog;
 import com.echocampus.bot.common.Result;
+import com.echocampus.bot.entity.OperationLog;
 import com.echocampus.bot.service.DataCleanupService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -37,6 +39,11 @@ public class SystemController {
     @Operation(summary = "手动触发数据清理", description = "立即执行一次数据清理任务")
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/cleanup")
+    @OpLog(
+            operationType = OperationLog.OperationType.OTHER,
+            resourceType = OperationLog.ResourceType.SYSTEM,
+            description = "手动触发数据清理任务"
+    )
     public Result<Map<String, Object>> triggerCleanup() {
         log.info("手动触发数据清理任务");
         
