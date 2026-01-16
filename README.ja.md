@@ -113,7 +113,7 @@
 
 ```bash
 # 1. プロジェクトをクローン
-git clone https://github.com/yourusername/EchoCampus-Bot.git
+git clone https://github.com/1na-ko/EchoCampus-Bot.git
 cd EchoCampus-Bot
 
 # 2. 環境変数を設定
@@ -202,19 +202,20 @@ DEEPSEEK_API_KEY=your_deepseek_api_key
 
 ## 📸 デモ
 
-> 📌 **注意**: プロジェクトのスクリーンショットは近日公開予定です！
-
-<!-- 
 <p align="center">
-  <img src="docs/assets/demo-chat.png" alt="チャット画面" width="80%">
-  <br><em>インテリジェントQ&Aチャット画面</em>
+  <img src="docs/assets/login.png" alt="Login Screen" width="80%">
+  <br><em>Login Screen</em>
 </p>
 
 <p align="center">
-  <img src="docs/assets/demo-knowledge.png" alt="ナレッジベース管理" width="80%">
-  <br><em>ナレッジベースドキュメント管理</em>
+  <img src="docs/assets/chat.png" alt="Chat Screen" width="80%">
+  <br><em>Chat Screen</em>
 </p>
--->
+
+<p align="center">
+  <img src="docs/assets/knowledge.png" alt="Knowledge Screen" width="80%">
+  <br><em>Knowledge Screen</em>
+</p>
 
 ---
 
@@ -389,7 +390,7 @@ EchoCampus-Bot/
 - [x] 🔐 ユーザー認証と権限管理
 - [x] 🐳 Dockerコンテナ化デプロイ
 - [x] 📧 メール認証機能
-- [ ] 🔄 ストリーミングレスポンス（SSE）
+- [x] 🔄 ストリーミングレスポンス（SSE）
 - [ ] 🌐 多言語サポート
 - [ ] 📱 モバイル対応
 - [ ] 🔌 プラグインシステム

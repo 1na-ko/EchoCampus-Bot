@@ -113,7 +113,7 @@ User Question → Vectorization → Milvus Retrieval → Context Building → De
 
 ```bash
 # 1. Clone the project
-git clone https://github.com/yourusername/EchoCampus-Bot.git
+git clone https://github.com/1na-ko/EchoCampus-Bot.git
 cd EchoCampus-Bot
 
 # 2. Configure environment variables
@@ -202,19 +202,20 @@ DEEPSEEK_API_KEY=your_deepseek_api_key
 
 ## 📸 Demo
 
-> 📌 **Note**: Project screenshots coming soon!
-
-<!-- 
 <p align="center">
-  <img src="docs/assets/demo-chat.png" alt="Chat Interface" width="80%">
-  <br><em>Intelligent Q&A Chat Interface</em>
+  <img src="docs/assets/login.png" alt="Login Screen" width="80%">
+  <br><em>Login Screen</em>
 </p>
 
 <p align="center">
-  <img src="docs/assets/demo-knowledge.png" alt="Knowledge Management" width="80%">
-  <br><em>Knowledge Base Document Management</em>
+  <img src="docs/assets/chat.png" alt="Chat Screen" width="80%">
+  <br><em>Chat Screen</em>
 </p>
--->
+
+<p align="center">
+  <img src="docs/assets/knowledge.png" alt="Knowledge Screen" width="80%">
+  <br><em>Knowledge Screen</em>
+</p>
 
 ---
 
@@ -389,7 +390,7 @@ We welcome all forms of contributions! Whether it's reporting issues, suggesting
 - [x] 🔐 User authentication and authorization
 - [x] 🐳 Docker containerized deployment
 - [x] 📧 Email verification
-- [ ] 🔄 Streaming response (SSE)
+- [x] 🔄 Streaming response (SSE)
 - [ ] 🌎 Multi-language support
 - [ ] 📱 Mobile responsive design
 - [ ] 🔌 Plugin system

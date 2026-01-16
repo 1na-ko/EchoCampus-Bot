@@ -113,7 +113,7 @@
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/yourusername/EchoCampus-Bot.git
+git clone https://github.com/1na-ko/EchoCampus-Bot.git
 cd EchoCampus-Bot
 
 # 2. 配置环境变量
@@ -202,19 +202,20 @@ DEEPSEEK_API_KEY=your_deepseek_api_key
 
 ## 📸 项目演示
 
-> 📌 **提示**: 项目截图即将添加，敬请期待！
-
-<!-- 
 <p align="center">
-  <img src="docs/assets/demo-chat.png" alt="聊天界面" width="80%">
-  <br><em>智能问答聊天界面</em>
+  <img src="docs/assets/login.png" alt="登录界面" width="80%">
+  <br><em>登录界面</em>
 </p>
 
 <p align="center">
-  <img src="docs/assets/demo-knowledge.png" alt="知识库管理" width="80%">
+  <img src="docs/assets/chat.png" alt="聊天界面" width="80%">
+  <br><em>智能问答聊天</em>
+</p>
+
+<p align="center">
+  <img src="docs/assets/knowledge.png" alt="知识库管理" width="80%">
   <br><em>知识库文档管理</em>
 </p>
--->
 
 ---
 
@@ -389,7 +390,7 @@ EchoCampus-Bot/
 - [x] 🔐 用户认证与权限管理
 - [x] 🐳 Docker 容器化部署
 - [x] 📧 邮箱验证码功能
-- [ ] 🔄 流式响应 (SSE)
+- [x] 🔄 流式响应 (SSE)
 - [ ] 🌐 多语言支持
 - [ ] 📱 移动端适配
 - [ ] 🔌 插件系统
