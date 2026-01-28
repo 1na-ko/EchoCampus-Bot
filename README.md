@@ -32,7 +32,17 @@
 
 ---
 
-## 📖 项目简介
+## � 重构进度
+
+> **当前阶段**: 架构重构设计阶段  
+> **已完成**: ✅ Golang Agent 重构设计文档编写完成（2026-01-29）  
+> **文档位置**: [Agent重构设计文档](docs/refactor/Agent重构设计文档_Golang_Eino.md)
+>
+> 本项目正在从 **Java RAG** 架构向 **Golang Agent** 架构演进，采用 Eino 框架和 pgvector 向量存储。
+
+---
+
+## �📖 项目简介
 
 **EchoCampus-Bot** 是一款基于 **RAG (检索增强生成)** 技术的智能校园知识问答机器人。它采用现代化的前后端分离架构，结合 Spring Boot、Vue.js、PostgreSQL 和 Milvus 向量数据库，为校园用户提供准确、智能的知识问答服务。
 
