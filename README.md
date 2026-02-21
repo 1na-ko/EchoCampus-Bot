@@ -35,10 +35,10 @@
 ## 重构进度
 
 > **当前阶段**: 架构重构设计阶段  
-> **已完成**: ✅ Golang Agent 重构设计文档编写完成（2026-01-29）  
-> **文档位置**: [Agent重构设计文档](docs/refactor/Agent重构设计文档_Golang_Eino.md)
+> **已完成**: ✅ Python Agent 重构设计文档编写完成（2026-02-21）  
+> **文档位置**: [Agent重构设计文档](docs/refactor/重构文档_RAG到Agent转型方案.md)
 >
-> 本项目正在从 **Java RAG** 架构向 **Golang Agent** 架构演进，采用 Eino 框架和 pgvector 向量存储。
+> 本项目正在从 **Java RAG** 架构向 **Python Agent** 架构演进，采用 LangGraph 框架和 pgvector 向量存储。
 
 ---
 
