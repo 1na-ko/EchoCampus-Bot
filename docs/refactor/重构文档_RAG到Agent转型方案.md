@@ -1,7 +1,8 @@
 # EchoCampus-Bot 重构文档：从RAG到Agent的技术转型方案
 
 > **文档版本**: v1.0.0  
-> **编制日期**: 2026年2月21日  
+> **创建日期**: 2026年1月16日  
+> **修订日期**: 2026年2月21日  
 > **文档性质**: 项目重构技术规划文书  
 > **适用范围**: EchoCampus-Bot 后端服务重构（Java → Python/LangGraph）  
 > **保密等级**: 内部技术文档
@@ -139,7 +140,7 @@ Java 的 LangChain4j（v0.28.0）虽能满足基本 RAG 需求，但与 Python �
 
 ### 2.2 后端分层架构拆解
 
-后端采用标准 Spring Boot 分层架构（共 127 个 Java 源文件），包结构如下：
+后端采用标准 Spring Boot 分层架构（共 112 个 Java 主源文件 + 15 个测试文件），包结构如下：
 
 ```
 com.echocampus.bot/
@@ -650,19 +651,157 @@ Agent 的核心工作流基于 LangGraph 的 StateGraph 建模：
 
 #### 4.3.2 Agent 状态定义
 
+```python
+# app/agent/state.py
+from __future__ import annotations
+
+import operator
+from typing import Annotated, Optional
+
+from langchain_core.messages import AnyMessage
+from typing_extensions import TypedDict
+
+
+class AgentState(TypedDict):
+    """Agent 执行状态，贯穿整个 StateGraph 生命周期"""
+    messages: Annotated[list[AnyMessage], operator.add]  # 对话消息（自动追加）
+    user_id: int                           # 当前用户 ID
+    conversation_id: int                   # 当前会话 ID
+    intent: str                            # 识别到的用户意图
+    retrieved_context: str                 # 检索到的知识上下文
+    sources: list[dict]                    # 知识来源列表
+    metadata: dict                         # 元数据（耗时、token 数等）
+    error: Optional[str]                   # 错误信息
 ```
-AgentState:
-  messages: List[BaseMessage]       # 对话消息列表
-  user_id: int                      # 当前用户ID
-  conversation_id: int              # 当前会话ID
-  intent: str                       # 识别到的用户意图
-  tool_results: List[ToolResult]    # 工具调用结果
-  retrieved_context: str            # 检索到的知识上下文
-  sources: List[SourceDoc]          # 知识来源列表
-  generation: str                   # 生成的回答文本
-  metadata: dict                    # 元数据（耗时、token数等）
-  error: Optional[str]              # 错误信息
+
+> **设计说明**：`messages` 字段使用 `Annotated[list, operator.add]`，这是 LangGraph 的约定——多个节点返回的消息会自动追加而非覆盖，确保完整的对话历史在图中自然流转。
+
+#### 4.3.2.1 StateGraph 骨架代码实现
+
+以下为 Agent 核心工作流的 Python 骨架实现，基于 LangGraph 官方最佳实践：
+
+```python
+# app/agent/graph.py
+from typing import Literal
+
+from langchain_openai import ChatOpenAI
+from langgraph.graph import StateGraph, START, END
+from langgraph.prebuilt import ToolNode
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
+from app.agent.state import AgentState
+from app.agent.tools.knowledge_search import knowledge_search
+from app.agent.tools.campus_api import campus_schedule, campus_grade, campus_notice
+from app.config import settings
+
+# ======================== 工具注册 ========================
+
+tools = [knowledge_search, campus_schedule, campus_grade, campus_notice]
+
+# ======================== LLM 初始化 ========================
+# DeepSeek API 兼容 OpenAI 格式，直接使用 ChatOpenAI
+
+llm = ChatOpenAI(
+    model="deepseek-chat",
+    base_url="https://api.deepseek.com/v1",
+    api_key=settings.DEEPSEEK_API_KEY,
+    max_tokens=2000,
+    streaming=True,
+)
+llm_with_tools = llm.bind_tools(tools)
+
+
+# ======================== 节点定义 ========================
+
+async def call_agent(state: AgentState) -> dict:
+    """核心 Agent 节点：调用绑定工具的 LLM，由模型自主决定是直接回答还是调用工具"""
+    response = await llm_with_tools.ainvoke(state["messages"])
+    return {"messages": [response]}
+
+
+# ToolNode 自动管理工具调用：解析 LLM 返回的 tool_calls，执行对应工具，
+# 将结果封装为 ToolMessage 回传
+tool_node = ToolNode(tools)
+
+
+# ======================== 条件路由 ========================
+
+def should_continue(state: AgentState) -> Literal["tool_node", "__end__"]:
+    """判断是否需要继续工具调用循环"""
+    last_message = state["messages"][-1]
+    # 如果 LLM 返回了 tool_calls，则路由到工具节点执行
+    if last_message.tool_calls:
+        return "tool_node"
+    # 否则结束，直接返回最终回答
+    return END
+
+
+# ======================== 构建 StateGraph ========================
+
+async def build_agent_graph() -> StateGraph:
+    """构建并编译 Agent 工作流图（带 PostgreSQL 检查点持久化）"""
+    async with AsyncPostgresSaver.from_conn_string(settings.DATABASE_URL) as checkpointer:
+        builder = StateGraph(AgentState)
+
+        # 添加节点
+        builder.add_node("agent", call_agent)
+        builder.add_node("tool_node", tool_node)
+
+        # 添加边
+        builder.add_edge(START, "agent")                            # 入口 → Agent
+        builder.add_conditional_edges("agent", should_continue,     # Agent → 工具 or 结束
+                                      ["tool_node", END])
+        builder.add_edge("tool_node", "agent")                      # 工具 → 回到 Agent（循环）
+
+        # 编译图（挂载 PostgreSQL 检查点，实现对话持久化）
+        return builder.compile(checkpointer=checkpointer)
 ```
+
+以下为配合 FastAPI 的流式调用示例：
+
+```python
+# app/api/v1/chat.py（SSE 流式端点骨架）
+from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
+
+router = APIRouter()
+
+@router.post("/chat/message/stream")
+async def chat_stream(request: ChatRequest):
+    """Agent 流式问答端点，通过 SSE 推送执行过程"""
+    graph = await build_agent_graph()
+    config = {"configurable": {"thread_id": str(request.conversation_id)}}
+
+    async def event_generator():
+        async for event in graph.astream_events(
+            {"messages": [{"role": "user", "content": request.message}],
+             "user_id": request.user_id,
+             "conversation_id": request.conversation_id},
+            config=config,
+            version="v2",
+        ):
+            kind = event["event"]
+            if kind == "on_chat_model_stream":
+                # 流式内容片段
+                content = event["data"]["chunk"].content
+                if content:
+                    yield f"event: content\ndata: {{\"text\": \"{content}\"}}\n\n"
+            elif kind == "on_tool_start":
+                # 工具调用开始
+                tool_name = event["name"]
+                yield f"event: tool_call\ndata: {{\"tool\": \"{tool_name}\"}}\n\n"
+            elif kind == "on_tool_end":
+                # 工具调用完成
+                yield f"event: tool_result\ndata: {{\"tool\": \"{event['name']}\"}}\n\n"
+        yield "event: done\ndata: {}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+```
+
+> **核心设计要点**：
+> 1. `call_agent` → `should_continue` → `tool_node` → `call_agent` 形成**ReAct 循环**，LLM 自主决定何时停止工具调用
+> 2. `AsyncPostgresSaver` 将每步状态持久化到 PostgreSQL，支持对话中断后恢复
+> 3. `astream_events()` 提供细粒度事件流，可精确区分内容流、工具调用等事件类型，映射到前端 SSE 协议
 
 #### 4.3.3 智能体核心能力实现方案
 
@@ -1004,6 +1143,87 @@ LIMIT $3;                                              -- Top-K
 ```
 
 **关键优势**：向量检索与关系型过滤在同一 SQL 中完成，无需跨库 JOIN。
+
+**Python（SQLAlchemy + pgvector）实现**：
+
+```python
+# app/repositories/vector_repo.py
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from pgvector.sqlalchemy import Vector  # pip install pgvector
+
+from app.models.knowledge import KnowledgeChunk, KnowledgeDoc
+
+
+async def search_similar_chunks(
+    session: AsyncSession,
+    query_embedding: list[float],
+    top_k: int = 5,
+    similarity_threshold: float = 0.4,
+    category: str | None = None,
+) -> list[dict]:
+    """
+    基于 pgvector 的向量相似度检索
+
+    Args:
+        session: SQLAlchemy 异步会话
+        query_embedding: 查询向量（1024 维）
+        top_k: 返回结果数量
+        similarity_threshold: 最低相似度阈值
+        category: 知识分类过滤（可选）
+    """
+    # 使用 pgvector 的 cosine_distance 计算余弦距离，1 - distance = similarity
+    similarity = (
+        1 - KnowledgeChunk.embedding.cosine_distance(query_embedding)
+    ).label("similarity")
+
+    query = (
+        select(
+            KnowledgeChunk.id,
+            KnowledgeChunk.content,
+            KnowledgeChunk.doc_id,
+            KnowledgeDoc.title.label("doc_title"),
+            KnowledgeDoc.category,
+            similarity,
+        )
+        .join(KnowledgeDoc, KnowledgeChunk.doc_id == KnowledgeDoc.id)
+        .where(KnowledgeDoc.status == "ACTIVE")
+        .where(KnowledgeChunk.embedding.is_not(None))
+        .where(similarity > similarity_threshold)
+        .order_by(KnowledgeChunk.embedding.cosine_distance(query_embedding))
+        .limit(top_k)
+    )
+
+    if category:
+        query = query.where(KnowledgeDoc.category == category)
+
+    result = await session.execute(query)
+    return [dict(row._mapping) for row in result.all()]
+```
+
+```python
+# app/models/knowledge.py（SQLAlchemy Model 中的 pgvector 列定义）
+from sqlalchemy import Column, BigInteger, Text, Integer, String, ForeignKey
+from sqlalchemy.dialects.postgresql import JSONB
+from pgvector.sqlalchemy import Vector
+
+from app.models.base import Base
+
+
+class KnowledgeChunk(Base):
+    __tablename__ = "knowledge_chunks"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    doc_id = Column(BigInteger, ForeignKey("knowledge_docs.id", ondelete="CASCADE"), nullable=False)
+    chunk_index = Column(Integer, nullable=False)
+    content = Column(Text, nullable=False)
+    content_hash = Column(String(64))
+    embedding = Column(Vector(1024))          # pgvector 向量列，1024 维
+    metadata_ = Column("metadata", JSONB, default={})
+    token_count = Column(Integer, default=0)
+```
+
+> **对比原系统**：原 Java 版需要通过 OkHttp 调用 Milvus SDK 执行向量检索，再跨库 JOIN PostgreSQL 获取元数据，存在数据一致性风险（技术债务 D-05）。重构后向量与元数据在同一事务中操作，从根本上消除了一致性问题。
 
 #### 5.4.2 索引策略优化
 
@@ -1978,7 +2198,7 @@ LangGraph 的状态管理替代原系统的手动状态管理：
 | ruff | 0.3+ | Linter + Formatter |
 | uv | 0.4+ | 包管理器 |
 | Docker | 24+ | 容器化 |
-| PostgreSQL | 16+ | 主数据库 |
+| PostgreSQL | 15+（推荐 16） | 主数据库（兼容现有 PG 15 实例，新部署推荐 PG 16） |
 
 ### 附录 B：术语表
 
@@ -2009,8 +2229,9 @@ LangGraph 的状态管理替代原系统的手动状态管理：
 ---
 
 > **文档信息**
-> - 文档版本：v1.0
+> - 文档版本：v1.0.0
 > - 创建日期：2026-01-16
+> - 最后修订：2026-02-21
 > - 文档状态：正式发布
 > - 适用范围：EchoCampus-Bot 项目后端重构
 
