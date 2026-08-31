@@ -14,6 +14,7 @@
 
 <p align="center">
   <!-- 徽章区域 -->
+  <a href="https://github.com/1na-ko/EchoCampus-Bot/actions/workflows/ci.yml"><img src="https://github.com/1na-ko/EchoCampus-Bot/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-blue.svg" alt="License"></a>
   <img src="https://img.shields.io/badge/Spring%20Boot-3.2.1-brightgreen.svg" alt="Spring Boot">
   <img src="https://img.shields.io/badge/Vue.js-3.4.0-42b883.svg" alt="Vue.js">
