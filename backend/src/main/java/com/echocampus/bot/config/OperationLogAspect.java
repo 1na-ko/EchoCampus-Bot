@@ -60,6 +60,12 @@ public class OperationLogAspect {
      */
     private static final int MAX_CONTENT_LENGTH = 2000;
 
+    /** 与 operation_logs.request_url VARCHAR(500) 对齐 */
+    private static final int MAX_URL_LENGTH = 500;
+
+    /** 与 operation_logs.ip_address VARCHAR(100) 对齐 */
+    private static final int MAX_IP_LENGTH = 100;
+
     /**
      * 定义切入点：所有带有@OpLog注解的方法
      */
@@ -161,14 +167,14 @@ public class OperationLogAspect {
             }
             
             // 设置IP地址
-            operationLog.setIpAddress(getClientIp(request));
-            
+            operationLog.setIpAddress(truncateToLimit(getClientIp(request), MAX_IP_LENGTH));
+
             // 设置User-Agent
             operationLog.setUserAgent(truncateString(request.getHeader("User-Agent")));
-            
+
             // 设置请求方法和URL
             operationLog.setRequestMethod(request.getMethod());
-            operationLog.setRequestUrl(request.getRequestURI());
+            operationLog.setRequestUrl(truncateToLimit(request.getRequestURI(), MAX_URL_LENGTH));
         }
         
         // 设置请求参数（如果配置允许）
@@ -276,6 +282,21 @@ public class OperationLogAspect {
             return str;
         }
         return str.substring(0, MAX_CONTENT_LENGTH) + "...[truncated]";
+    }
+
+    /**
+     * 硬截断字符串到指定最大长度，不追加省略标记
+     * 用于有数据库字段长度约束的列（如 VARCHAR），确保写入不超限
+     *
+     * @param str       原字符串
+     * @param maxLength 最大长度（数据库字段长度）
+     * @return 截断后的字符串
+     */
+    private String truncateToLimit(String str, int maxLength) {
+        if (str == null || str.length() <= maxLength) {
+            return str;
+        }
+        return str.substring(0, maxLength);
     }
 
     /**

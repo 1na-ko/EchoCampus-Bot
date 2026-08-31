@@ -333,6 +333,82 @@ class OperationLogAspectTest {
     }
 
     @Nested
+    @DisplayName("字段截断测试")
+    class FieldTruncationTests {
+
+        @Test
+        @DisplayName("超长请求URI应该被截断到数据库字段上限")
+        void shouldTruncateOverlongRequestUrl() throws Throwable {
+            // Arrange
+            Method method = getTestMethod("testMethod", String.class, String.class);
+            String longUri = "/v1/chat/" + "a".repeat(1000);
+
+            doReturn(signature).when(joinPoint).getSignature();
+            doReturn(method).when(signature).getMethod();
+            doReturn(new String[]{"username", "password"}).when(signature).getParameterNames();
+            doReturn(new Object[]{"testuser", "password123"}).when(joinPoint).getArgs();
+            doReturn("success").when(joinPoint).proceed();
+            doReturn("{}").when(objectMapper).writeValueAsString(any());
+
+            ServletRequestAttributes attributes = mock(ServletRequestAttributes.class);
+            doReturn(request).when(attributes).getRequest();
+            RequestContextHolder.setRequestAttributes(attributes);
+
+            doReturn(null).when(request).getAttribute("userId");
+            doReturn(null).when(request).getHeader("X-Forwarded-For");
+            doReturn("127.0.0.1").when(request).getRemoteAddr();
+            doReturn(null).when(request).getHeader("User-Agent");
+            doReturn("GET").when(request).getMethod();
+            doReturn(longUri).when(request).getRequestURI();
+
+            // Act
+            operationLogAspect.around(joinPoint);
+
+            // Assert - request_url 列为 VARCHAR(500)，必须硬截到500以内
+            ArgumentCaptor<OperationLog> captor = ArgumentCaptor.forClass(OperationLog.class);
+            verify(operationLogService).saveAsync(captor.capture());
+
+            OperationLog capturedLog = captor.getValue();
+            assertThat(capturedLog.getRequestUrl()).hasSize(500);
+        }
+
+        @Test
+        @DisplayName("超长X-Forwarded-For应该被截断到数据库字段上限")
+        void shouldTruncateOverlongIp() throws Throwable {
+            // Arrange
+            Method method = getTestMethod("testMethod", String.class, String.class);
+            String longIp = "a".repeat(300);
+
+            doReturn(signature).when(joinPoint).getSignature();
+            doReturn(method).when(signature).getMethod();
+            doReturn(new String[]{"username", "password"}).when(signature).getParameterNames();
+            doReturn(new Object[]{"testuser", "password123"}).when(joinPoint).getArgs();
+            doReturn("success").when(joinPoint).proceed();
+            doReturn("{}").when(objectMapper).writeValueAsString(any());
+
+            ServletRequestAttributes attributes = mock(ServletRequestAttributes.class);
+            doReturn(request).when(attributes).getRequest();
+            RequestContextHolder.setRequestAttributes(attributes);
+
+            doReturn(null).when(request).getAttribute("userId");
+            doReturn(longIp).when(request).getHeader("X-Forwarded-For");
+            doReturn(null).when(request).getHeader("User-Agent");
+            doReturn("GET").when(request).getMethod();
+            doReturn("/v1/auth/login").when(request).getRequestURI();
+
+            // Act
+            operationLogAspect.around(joinPoint);
+
+            // Assert - ip_address 列为 VARCHAR(100)，必须硬截到100以内
+            ArgumentCaptor<OperationLog> captor = ArgumentCaptor.forClass(OperationLog.class);
+            verify(operationLogService).saveAsync(captor.capture());
+
+            OperationLog capturedLog = captor.getValue();
+            assertThat(capturedLog.getIpAddress()).hasSize(100);
+        }
+    }
+
+    @Nested
     @DisplayName("异常安全测试")
     class ExceptionSafetyTests {
 
