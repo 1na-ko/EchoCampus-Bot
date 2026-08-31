@@ -149,7 +149,7 @@ public class ChatController {
     )
     public Result<List<Message>> getMessages(HttpServletRequest request, @Parameter(description = "会话ID") @PathVariable Long conversationId) {
         Long userId = (Long) request.getAttribute("userId");
-        List<Message> messages = chatService.getMessages(conversationId);
+        List<Message> messages = chatService.getMessages(userId, conversationId);
         return Result.success(messages);
     }
 
@@ -176,7 +176,7 @@ public class ChatController {
     )
     public Result<Void> deleteConversation(HttpServletRequest request, @Parameter(description = "会话ID") @PathVariable Long conversationId) {
         Long userId = (Long) request.getAttribute("userId");
-        chatService.deleteConversation(conversationId);
+        chatService.deleteConversation(userId, conversationId);
         return Result.success();
     }
 
@@ -191,7 +191,7 @@ public class ChatController {
             @Parameter(description = "会话ID") @PathVariable Long conversationId,
             @Parameter(description = "新标题") @RequestParam String title) {
         Long userId = (Long) request.getAttribute("userId");
-        chatService.updateConversationTitle(conversationId, title);
+        chatService.updateConversationTitle(userId, conversationId, title);
         return Result.success();
     }
 }

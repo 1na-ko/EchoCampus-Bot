@@ -271,7 +271,7 @@ class ChatControllerTest {
                 createTestMessage(1L, "用户消息", "USER"),
                 createTestMessage(2L, "AI回复", "BOT")
             );
-            when(chatService.getMessages(1L)).thenReturn(messages);
+            when(chatService.getMessages(1L, 1L)).thenReturn(messages);
 
             // Act & Assert
             mockMvc.perform(get("/v1/chat/conversations/1/messages")
@@ -288,7 +288,7 @@ class ChatControllerTest {
         @DisplayName("空会话应该返回空数组")
         void shouldReturnEmptyArrayForEmptyConversation() throws Exception {
             // Arrange
-            when(chatService.getMessages(1L)).thenReturn(Collections.emptyList());
+            when(chatService.getMessages(1L, 1L)).thenReturn(Collections.emptyList());
 
             // Act & Assert
             mockMvc.perform(get("/v1/chat/conversations/1/messages")
@@ -343,7 +343,7 @@ class ChatControllerTest {
         @DisplayName("应该成功删除会话")
         void shouldDeleteConversationSuccessfully() throws Exception {
             // Arrange
-            doNothing().when(chatService).deleteConversation(1L);
+            doNothing().when(chatService).deleteConversation(1L, 1L);
 
             // Act & Assert
             mockMvc.perform(delete("/v1/chat/conversations/1")
@@ -351,7 +351,7 @@ class ChatControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
-            verify(chatService).deleteConversation(1L);
+            verify(chatService).deleteConversation(1L, 1L);
         }
 
         @Test
@@ -359,7 +359,7 @@ class ChatControllerTest {
         void shouldReturnErrorWhenConversationNotFound() throws Exception {
             // Arrange
             doThrow(new BusinessException(ResultCode.CONVERSATION_NOT_FOUND))
-                .when(chatService).deleteConversation(999L);
+                .when(chatService).deleteConversation(1L, 999L);
 
             // Act & Assert
             mockMvc.perform(delete("/v1/chat/conversations/999")
@@ -377,7 +377,7 @@ class ChatControllerTest {
         @DisplayName("应该成功更新会话标题")
         void shouldUpdateConversationTitleSuccessfully() throws Exception {
             // Arrange
-            doNothing().when(chatService).updateConversationTitle(1L, "新标题");
+            doNothing().when(chatService).updateConversationTitle(1L, 1L, "新标题");
 
             // Act & Assert
             mockMvc.perform(put("/v1/chat/conversations/1")
@@ -386,7 +386,7 @@ class ChatControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
 
-            verify(chatService).updateConversationTitle(1L, "新标题");
+            verify(chatService).updateConversationTitle(1L, 1L, "新标题");
         }
 
         @Test
@@ -394,7 +394,7 @@ class ChatControllerTest {
         void shouldReturnErrorWhenUpdatingNonExistentConversation() throws Exception {
             // Arrange
             doThrow(new BusinessException(ResultCode.CONVERSATION_NOT_FOUND))
-                .when(chatService).updateConversationTitle(eq(999L), anyString());
+                .when(chatService).updateConversationTitle(eq(1L), eq(999L), anyString());
 
             // Act & Assert
             mockMvc.perform(put("/v1/chat/conversations/999")

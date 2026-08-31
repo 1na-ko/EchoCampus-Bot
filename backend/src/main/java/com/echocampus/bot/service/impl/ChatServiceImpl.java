@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -52,10 +53,7 @@ public class ChatServiceImpl implements ChatService {
         // 1. 获取或创建会话
         Conversation conversation;
         if (request.getConversationId() != null) {
-            conversation = conversationMapper.selectById(request.getConversationId());
-            if (conversation == null) {
-                throw new BusinessException(ResultCode.CONVERSATION_NOT_FOUND);
-            }
+            conversation = getOwnedConversation(userId, request.getConversationId());
         } else {
             // 创建新会话
             conversation = createConversation(userId, "新对话");
@@ -165,11 +163,7 @@ public class ChatServiceImpl implements ChatService {
      */
     private Conversation getOrCreateConversation(Long userId, ChatRequest request) {
         if (request.getConversationId() != null) {
-            Conversation conversation = conversationMapper.selectById(request.getConversationId());
-            if (conversation == null) {
-                throw new BusinessException(ResultCode.CONVERSATION_NOT_FOUND);
-            }
-            return conversation;
+            return getOwnedConversation(userId, request.getConversationId());
         } else {
             // 创建新会话，使用问题内容作为标题
             String title = request.getMessage();
@@ -178,6 +172,22 @@ public class ChatServiceImpl implements ChatService {
             }
             return createConversation(userId, title);
         }
+    }
+
+    /**
+     * 获取会话并校验属主
+     * 会话不存在或不属于当前用户时统一抛出会话不存在异常，避免泄露他人会话的存在性
+     *
+     * @param userId 当前用户ID
+     * @param conversationId 会话ID
+     * @return 属于当前用户的会话
+     */
+    private Conversation getOwnedConversation(Long userId, Long conversationId) {
+        Conversation conversation = conversationMapper.selectById(conversationId);
+        if (conversation == null || !Objects.equals(conversation.getUserId(), userId)) {
+            throw new BusinessException(ResultCode.CONVERSATION_NOT_FOUND);
+        }
+        return conversation;
     }
 
     /**
@@ -425,7 +435,8 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    public List<Message> getMessages(Long conversationId) {
+    public List<Message> getMessages(Long userId, Long conversationId) {
+        getOwnedConversation(userId, conversationId);
         return messageMapper.selectByConversationId(conversationId);
     }
 
@@ -443,22 +454,16 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
-    public void deleteConversation(Long conversationId) {
-        Conversation conversation = conversationMapper.selectById(conversationId);
-        if (conversation == null) {
-            throw new BusinessException(ResultCode.CONVERSATION_NOT_FOUND);
-        }
+    public void deleteConversation(Long userId, Long conversationId) {
+        Conversation conversation = getOwnedConversation(userId, conversationId);
         conversation.setStatus("DELETED");
         conversationMapper.updateById(conversation);
     }
 
     @Override
     @Transactional
-    public void updateConversationTitle(Long conversationId, String title) {
-        Conversation conversation = conversationMapper.selectById(conversationId);
-        if (conversation == null) {
-            throw new BusinessException(ResultCode.CONVERSATION_NOT_FOUND);
-        }
+    public void updateConversationTitle(Long userId, Long conversationId, String title) {
+        Conversation conversation = getOwnedConversation(userId, conversationId);
         conversation.setTitle(title);
         conversationMapper.updateById(conversation);
     }

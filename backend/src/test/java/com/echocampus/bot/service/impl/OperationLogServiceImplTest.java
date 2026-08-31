@@ -134,7 +134,7 @@ class OperationLogServiceImplTest {
 
             doReturn(page).when(operationLogMapper).selectPageByConditions(
                     any(Page.class), anyLong(), anyString(), anyString(),
-                    anyString(), any(), any(), anyString());
+                    anyString(), any(), any(), any());
 
             // Act
             IPage<OperationLog> result = operationLogService.queryPage(

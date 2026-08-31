@@ -41,10 +41,11 @@ public interface ChatService {
 
     /**
      * 获取会话的消息历史
+     * @param userId 用户ID，用于校验会话属主
      * @param conversationId 会话ID
      * @return 消息列表
      */
-    List<Message> getMessages(Long conversationId);
+    List<Message> getMessages(Long userId, Long conversationId);
 
     /**
      * 创建新会话
@@ -56,14 +57,16 @@ public interface ChatService {
 
     /**
      * 删除会话
+     * @param userId 用户ID，用于校验会话属主
      * @param conversationId 会话ID
      */
-    void deleteConversation(Long conversationId);
+    void deleteConversation(Long userId, Long conversationId);
 
     /**
      * 更新会话标题
+     * @param userId 用户ID，用于校验会话属主
      * @param conversationId 会话ID
      * @param title 新标题
      */
-    void updateConversationTitle(Long conversationId, String title);
+    void updateConversationTitle(Long userId, Long conversationId, String title);
 }

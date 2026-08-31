@@ -12,7 +12,6 @@ import com.echocampus.bot.mapper.MessageMapper;
 import com.echocampus.bot.service.EnhancedRagService;
 import com.echocampus.bot.service.RagService;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -32,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -40,14 +40,13 @@ import static org.mockito.Mockito.*;
 /**
  * ChatServiceImpl 单元测试
  * P1 优先级 - 对话核心业务
- * 
- * 注意：由于 MyBatis-Plus BaseMapper 与 Mockito 的兼容性问题，这些测试暂时被禁用。
- * 建议改用集成测试（@SpringBootTest）或使用内存数据库进行测试。
+ *
+ * 注：曾因 MyBatis-Plus BaseMapper 与旧版 Mockito（5.7.0）不兼容而整体禁用，
+ * pom.xml 中已将 mockito.version 升级至 5.16.1，恢复运行。
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("ChatServiceImpl - 聊天服务测试")
-@Disabled("MyBatis-Plus BaseMapper 与 Mockito 存在兼容性问题，需要改用集成测试")
 class ChatServiceImplTest {
 
     @Mock
@@ -119,7 +118,14 @@ class ChatServiceImplTest {
             // Arrange
             doReturn(testConversation).when(conversationMapper).selectById(1L);
             doReturn(new ArrayList<>()).when(messageMapper).selectByConversationId(1L);
-            
+            // 模拟数据库自增主键回填，否则响应中的messageId为null
+            AtomicLong messageIdSeq = new AtomicLong(100L);
+            doAnswer(invocation -> {
+                Message message = invocation.getArgument(0);
+                message.setId(messageIdSeq.incrementAndGet());
+                return 1;
+            }).when(messageMapper).insert(any(Message.class));
+
             RagService.RagResponse ragResponse = new RagService.RagResponse(
                 "这是AI的回复",
                 Collections.emptyList(),
@@ -255,7 +261,7 @@ class ChatServiceImplTest {
             assertThat(response.getSources()).hasSize(2);
             assertThat(response.getSources().get(0).getDocId()).isEqualTo(1L);
             assertThat(response.getSources().get(0).getTitle()).isEqualTo("文档1");
-            assertThat(response.getSources().get(0).getSimilarity()).isEqualTo(0.95);
+            assertThat(response.getSources().get(0).getSimilarity()).isEqualTo(0.95f);
         }
 
         @Test
@@ -353,7 +359,7 @@ class ChatServiceImplTest {
             doReturn(testConversation).when(conversationMapper).selectById(1L);
 
             // Act
-            chatService.deleteConversation(1L);
+            chatService.deleteConversation(1L, 1L);
 
             // Assert
             ArgumentCaptor<Conversation> conversationCaptor = ArgumentCaptor.forClass(Conversation.class);
@@ -368,7 +374,7 @@ class ChatServiceImplTest {
             doReturn(null).when(conversationMapper).selectById(999L);
 
             // Act & Assert
-            assertThatThrownBy(() -> chatService.deleteConversation(999L))
+            assertThatThrownBy(() -> chatService.deleteConversation(1L, 999L))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> {
                     BusinessException be = (BusinessException) e;
@@ -383,7 +389,7 @@ class ChatServiceImplTest {
             doReturn(testConversation).when(conversationMapper).selectById(1L);
 
             // Act
-            chatService.updateConversationTitle(1L, "新标题");
+            chatService.updateConversationTitle(1L, 1L, "新标题");
 
             // Assert
             ArgumentCaptor<Conversation> conversationCaptor = ArgumentCaptor.forClass(Conversation.class);
@@ -398,12 +404,106 @@ class ChatServiceImplTest {
             doReturn(null).when(conversationMapper).selectById(999L);
 
             // Act & Assert
-            assertThatThrownBy(() -> chatService.updateConversationTitle(999L, "新标题"))
+            assertThatThrownBy(() -> chatService.updateConversationTitle(1L, 999L, "新标题"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> {
                     BusinessException be = (BusinessException) e;
                     assertThat(be.getCode()).isEqualTo(ResultCode.CONVERSATION_NOT_FOUND.getCode());
                 });
+        }
+    }
+
+    @Nested
+    @DisplayName("会话越权防护测试")
+    class ConversationAuthorizationTests {
+
+        /**
+         * 构造一个属于其他用户（userId=2）的会话
+         */
+        private Conversation createOtherUsersConversation() {
+            Conversation otherConversation = createTestConversation();
+            otherConversation.setUserId(2L);
+            return otherConversation;
+        }
+
+        @Test
+        @DisplayName("读取他人会话消息应该抛出会话不存在异常")
+        void shouldThrowExceptionWhenGettingMessagesOfOthersConversation() {
+            // Arrange
+            doReturn(createOtherUsersConversation()).when(conversationMapper).selectById(1L);
+
+            // Act & Assert
+            assertThatThrownBy(() -> chatService.getMessages(1L, 1L))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    BusinessException be = (BusinessException) e;
+                    assertThat(be.getCode()).isEqualTo(ResultCode.CONVERSATION_NOT_FOUND.getCode());
+                });
+            verify(messageMapper, never()).selectByConversationId(anyLong());
+        }
+
+        @Test
+        @DisplayName("删除他人会话应该抛出会话不存在异常")
+        void shouldThrowExceptionWhenDeletingOthersConversation() {
+            // Arrange
+            doReturn(createOtherUsersConversation()).when(conversationMapper).selectById(1L);
+
+            // Act & Assert
+            assertThatThrownBy(() -> chatService.deleteConversation(1L, 1L))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    BusinessException be = (BusinessException) e;
+                    assertThat(be.getCode()).isEqualTo(ResultCode.CONVERSATION_NOT_FOUND.getCode());
+                });
+            verify(conversationMapper, never()).updateById(any(Conversation.class));
+        }
+
+        @Test
+        @DisplayName("修改他人会话标题应该抛出会话不存在异常")
+        void shouldThrowExceptionWhenUpdatingOthersConversationTitle() {
+            // Arrange
+            doReturn(createOtherUsersConversation()).when(conversationMapper).selectById(1L);
+
+            // Act & Assert
+            assertThatThrownBy(() -> chatService.updateConversationTitle(1L, 1L, "新标题"))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    BusinessException be = (BusinessException) e;
+                    assertThat(be.getCode()).isEqualTo(ResultCode.CONVERSATION_NOT_FOUND.getCode());
+                });
+            verify(conversationMapper, never()).updateById(any(Conversation.class));
+        }
+
+        @Test
+        @DisplayName("向他人会话发送消息应该抛出会话不存在异常")
+        void shouldThrowExceptionWhenSendingMessageToOthersConversation() {
+            // Arrange
+            doReturn(createOtherUsersConversation()).when(conversationMapper).selectById(1L);
+
+            // Act & Assert
+            assertThatThrownBy(() -> chatService.sendMessage(testUserId, testChatRequest))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    BusinessException be = (BusinessException) e;
+                    assertThat(be.getCode()).isEqualTo(ResultCode.CONVERSATION_NOT_FOUND.getCode());
+                });
+            verify(messageMapper, never()).insert(any(Message.class));
+        }
+
+        @Test
+        @DisplayName("流式发送消息到他人会话应该抛出会话不存在异常")
+        void shouldThrowExceptionWhenStreamingToOthersConversation() {
+            // Arrange
+            doReturn(createOtherUsersConversation()).when(conversationMapper).selectById(1L);
+
+            // Act & Assert
+            assertThatThrownBy(() -> chatService.sendMessageStream(testUserId, testChatRequest, response -> { }))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    BusinessException be = (BusinessException) e;
+                    assertThat(be.getCode()).isEqualTo(ResultCode.CONVERSATION_NOT_FOUND.getCode());
+                });
+            verify(messageMapper, never()).insert(any(Message.class));
         }
     }
 
@@ -415,6 +515,7 @@ class ChatServiceImplTest {
         @DisplayName("应该成功获取会话消息")
         void shouldGetMessages() {
             // Arrange
+            doReturn(testConversation).when(conversationMapper).selectById(1L);
             List<Message> messages = List.of(
                 createTestMessage(1L, 1L, "用户消息", "USER"),
                 createTestMessage(2L, 1L, "AI回复", "BOT")
@@ -422,7 +523,7 @@ class ChatServiceImplTest {
             doReturn(messages).when(messageMapper).selectByConversationId(1L);
 
             // Act
-            List<Message> result = chatService.getMessages(1L);
+            List<Message> result = chatService.getMessages(1L, 1L);
 
             // Assert
             assertThat(result).hasSize(2);
@@ -434,10 +535,11 @@ class ChatServiceImplTest {
         @DisplayName("空会话应该返回空列表")
         void shouldReturnEmptyListForEmptyConversation() {
             // Arrange
+            doReturn(testConversation).when(conversationMapper).selectById(1L);
             doReturn(new ArrayList<>()).when(messageMapper).selectByConversationId(1L);
 
             // Act
-            List<Message> result = chatService.getMessages(1L);
+            List<Message> result = chatService.getMessages(1L, 1L);
 
             // Assert
             assertThat(result).isEmpty();

@@ -20,6 +20,8 @@
 
     <properties>
         <java.version>17</java.version>
+        <!-- 覆盖 Spring Boot BOM 的 5.7.0：旧版 Mockito/ByteBuddy 在新 JDK 补丁下 mock BaseMapper 方法会抛 parameterTypes NPE -->
+        <mockito.version>5.16.1</mockito.version>
         <mybatis-plus.version>3.5.5</mybatis-plus.version>
         <druid.version>1.2.20</druid.version>
         <milvus.version>2.3.4</milvus.version>
