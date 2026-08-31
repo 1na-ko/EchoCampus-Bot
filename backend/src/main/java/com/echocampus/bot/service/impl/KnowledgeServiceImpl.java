@@ -106,12 +106,7 @@ public class KnowledgeServiceImpl implements KnowledgeService {
             
             // 4. 在事务提交后异步处理文档（避免异步线程读取到未提交的数据）
             final Long docId = doc.getId();
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    documentProcessService.processDocumentAsync(docId);
-                }
-            });
+            schedulePostCommitProcessing(docId);
             
             log.info("文档上传成功: docId={}, title={}", doc.getId(), doc.getTitle());
             return doc;
@@ -205,12 +200,26 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         knowledgeDocMapper.updateById(doc);
         
         // 在事务提交后异步重新处理（避免异步线程读取到未提交的数据）
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                documentProcessService.processDocumentAsync(docId);
-            }
-        });
+        schedulePostCommitProcessing(docId);
+    }
+
+    /**
+     * 事务提交后触发异步文档处理
+     * 无活动事务时立即触发，避免注册事务同步器失败（如单元测试环境）
+     *
+     * @param docId 文档ID
+     */
+    private void schedulePostCommitProcessing(Long docId) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    documentProcessService.processDocumentAsync(docId);
+                }
+            });
+        } else {
+            documentProcessService.processDocumentAsync(docId);
+        }
     }
 
     @Override

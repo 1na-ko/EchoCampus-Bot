@@ -15,7 +15,6 @@ import com.echocampus.bot.service.VerificationCodeService;
 import com.echocampus.bot.utils.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -40,8 +39,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * UserController 控制器测试
  * P2 优先级 - API契约验证
  * 
- * 注意：由于 @WebMvcTest 与 MyBatis-Plus 自动配置冲突，这些测试暂时被禁用。
- * 建议改用 @SpringBootTest 或手动配置 ApplicationContext。
+ * 注：曾因主类 @MapperScan 向 @WebMvcTest 切片注册 Mapper Bean 导致上下文加载失败，
+ * @MapperScan 移至 MyBatisPlusConfig 后恢复运行。
+ *
  */
 @WebMvcTest(value = UserController.class, excludeFilters = {
     @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = {JwtAuthenticationFilter.class, XssFilter.class})
@@ -49,7 +49,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false) // 禁用安全过滤器
 @TestPropertySource(properties = "spring.autoconfigure.exclude=org.mybatis.spring.boot.autoconfigure.MybatisAutoConfiguration")
 @DisplayName("UserController - 用户控制器测试")
-@Disabled("@WebMvcTest 与 MyBatis-Plus 自动配置存在冲突，需要改用集成测试")
 class UserControllerTest {
 
     @Autowired
@@ -319,10 +318,12 @@ class UserControllerTest {
             request.setUsername("codeuser");
             request.setPassword("password123");
             request.setEmail("code@example.com");
-            request.setVerificationCode("wrong");
+            // 必须是6位数字以通过DTO的@Size校验，从而走到service层的业务错误分支
+            request.setVerificationCode("000000");
 
+            // nickname未设置（null），anyString()不匹配null参数，须用any()
             when(userService.registerWithVerificationCode(
-                anyString(), anyString(), anyString(), anyString(), anyString()
+                any(), any(), any(), any(), any()
             )).thenThrow(new BusinessException(ResultCode.VERIFICATION_CODE_INVALID));
 
             // Act & Assert

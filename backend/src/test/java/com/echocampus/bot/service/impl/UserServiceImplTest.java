@@ -10,7 +10,6 @@ import com.echocampus.bot.service.VerificationCodeService;
 import com.echocampus.bot.utils.JwtUtil;
 import com.echocampus.bot.utils.PasswordUtil;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -35,13 +34,13 @@ import static org.mockito.Mockito.*;
  * UserServiceImpl 单元测试
  * P0 优先级 - 认证流程核心
  * 
- * 注意：由于 MyBatis-Plus BaseMapper 与 Mockito 的兼容性问题，这些测试暂时被禁用。
- * 建议改用集成测试（@SpringBootTest）或使用内存数据库进行测试。
+ * 注：曾因旧版 Mockito（5.7.0）无法 mock BaseMapper 而整体禁用，
+ * pom.xml 升级 mockito 至 5.16.1 后恢复运行。
+ *
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("UserServiceImpl - 用户服务测试")
-@Disabled("MyBatis-Plus BaseMapper 与 Mockito 存在兼容性问题，需要改用集成测试")
 class UserServiceImplTest {
 
     @Mock

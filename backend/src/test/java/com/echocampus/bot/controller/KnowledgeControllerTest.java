@@ -14,7 +14,6 @@ import com.echocampus.bot.service.KnowledgeService;
 import com.echocampus.bot.utils.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -43,8 +42,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * KnowledgeController 控制器测试
  * P2 优先级 - API契约验证
  * 
- * 注意：由于 @WebMvcTest 与 MyBatis-Plus 自动配置冲突，这些测试暂时被禁用。
- * 建议改用 @SpringBootTest 或手动配置 ApplicationContext。
+ * 注：曾因主类 @MapperScan 向 @WebMvcTest 切片注册 Mapper Bean 导致上下文加载失败，
+ * @MapperScan 移至 MyBatisPlusConfig 后恢复运行。
+ *
  */
 @WebMvcTest(value = KnowledgeController.class, excludeFilters = {
     @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = {JwtAuthenticationFilter.class, XssFilter.class})
@@ -52,7 +52,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false) // 禁用安全过滤器
 @TestPropertySource(properties = "spring.autoconfigure.exclude=org.mybatis.spring.boot.autoconfigure.MybatisAutoConfiguration")
 @DisplayName("KnowledgeController - 知识库控制器测试")
-@Disabled("@WebMvcTest 与 MyBatis-Plus 自动配置存在冲突，需要改用集成测试")
 class KnowledgeControllerTest {
 
     @Autowired

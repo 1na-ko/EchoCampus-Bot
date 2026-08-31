@@ -76,8 +76,9 @@ describe('User Store', () => {
     })
 
     it('如果localStorage有token应该设置为已认证', () => {
-      localStorageMock.getItem.mockReturnValueOnce('stored-token')
-      
+      // store state 会连续读两次 getItem（token 与 isAuthenticated），不能用 Once
+      localStorageMock.getItem.mockReturnValue('stored-token')
+
       // 需要重新创建pinia和store来读取localStorage
       setActivePinia(createPinia())
       const store = useUserStore()

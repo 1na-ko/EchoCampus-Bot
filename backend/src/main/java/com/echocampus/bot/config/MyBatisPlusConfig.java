@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import org.apache.ibatis.reflection.MetaObject;
+import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
@@ -16,6 +17,7 @@ import com.echocampus.bot.utils.DateTimeUtil;
  * MyBatis-Plus配置类
  */
 @Configuration
+@MapperScan("com.echocampus.bot.mapper")
 public class MyBatisPlusConfig {
 
     /**

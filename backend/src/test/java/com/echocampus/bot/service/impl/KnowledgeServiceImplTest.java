@@ -14,7 +14,6 @@ import com.echocampus.bot.mapper.KnowledgeDocMapper;
 import com.echocampus.bot.service.DocumentProcessService;
 import com.echocampus.bot.service.MilvusService;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -47,13 +46,13 @@ import static org.mockito.Mockito.*;
  * KnowledgeServiceImpl 单元测试
  * P1 优先级 - 知识库核心业务
  * 
- * 注意：由于 MyBatis-Plus BaseMapper 与 Mockito 的兼容性问题，这些测试暂时被禁用。
- * 建议改用集成测试（@SpringBootTest）或使用内存数据库进行测试。
+ * 注：曾因旧版 Mockito（5.7.0）无法 mock BaseMapper 而整体禁用，
+ * pom.xml 升级 mockito 至 5.16.1 后恢复运行。
+ *
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("KnowledgeServiceImpl - 知识库服务测试")
-@Disabled("MyBatis-Plus BaseMapper 与 Mockito 存在兼容性问题，需要改用集成测试")
 class KnowledgeServiceImplTest {
 
     @Mock
