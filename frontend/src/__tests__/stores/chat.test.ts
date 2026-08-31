@@ -310,7 +310,8 @@ describe('Chat Store', () => {
 
       const state = store._getOrCreateStreamState(1)
 
-      expect(state).toBe(existingState)
+      // pinia state 经 reactive 代理，读回的是代理对象而非原引用，只能断言深相等
+      expect(state).toEqual(existingState)
       expect(state.processingStage).toBe('generating')
     })
 
@@ -333,7 +334,7 @@ describe('Chat Store', () => {
 
       const messages = store._getOrCreateMessages(1)
 
-      expect(messages).toBe(existingMessages)
+      expect(messages).toEqual(existingMessages)
       expect(messages).toHaveLength(1)
     })
 

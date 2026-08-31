@@ -161,7 +161,8 @@ describe('Knowledge Store', () => {
       expect(result).not.toBeNull()
       expect(result?.id).toBe(1)
       expect(store.documents).toContainEqual(mockDoc)
-      expect(store.documents[0]).toBe(mockDoc) // 应该添加到列表开头
+      // pinia state 经 reactive 代理，读回的是代理对象而非原引用，只能断言深相等
+      expect(store.documents[0]).toEqual(mockDoc) // 应该添加到列表开头
     })
 
     it('上传文档失败应该返回null', async () => {

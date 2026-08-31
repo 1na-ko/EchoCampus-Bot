@@ -1,6 +1,5 @@
 package com.echocampus.bot;
 
-import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableAsync;
@@ -12,7 +11,6 @@ import org.springframework.scheduling.annotation.EnableAsync;
  * @author EchoCampus Team
  */
 @SpringBootApplication
-@MapperScan("com.echocampus.bot.mapper")
 @EnableAsync
 public class EchoCampusBotApplication {
 
